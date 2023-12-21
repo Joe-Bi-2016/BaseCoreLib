@@ -1,6 +1,6 @@
 #include "../../inc/base/TimerTask.h"
 #include "../../inc/os/AutoMutex.hpp"
-#include "../../inc/thread/MessageLooper.h"
+#include "../../inc/looper/MessageLooper.h"
 
 //---------------------------------------------------------------------------------------//
 __BEGIN__

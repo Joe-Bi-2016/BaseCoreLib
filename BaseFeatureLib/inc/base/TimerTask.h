@@ -1,7 +1,7 @@
 #ifndef __TimerTask_h__
 #define __TimerTask_h__
 #include "Macro.h"
-#include "../thread/MessageHandler.h"
+#include "../looper/MessageHandler.h"
 
 //--------------------------------------------------------------------------------------//
 __BEGIN__

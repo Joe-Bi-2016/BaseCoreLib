@@ -1,7 +1,7 @@
 #ifndef __LooperThread_h__
 #define __LooperThread_h__
 #include "MessageLooper.h"
-#include "ThreadBase.h"
+#include "../os/ThreadBase.h"
 #include <map>
 #include <memory>
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))

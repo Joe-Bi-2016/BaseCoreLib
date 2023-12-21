@@ -1,7 +1,7 @@
-#include "../../inc/thread/Message.h"
-#include "../../inc/thread/MessageHandler.h"
-#include "../../inc/thread/MessageQueue.h"
-#include "../../inc/thread/MessageLooper.h"
+#include "../../inc/looper/Message.h"
+#include "../../inc/looper/MessageHandler.h"
+#include "../../inc/looper/MessageQueue.h"
+#include "../../inc/looper/MessageLooper.h"
 #include "../../inc/os/AutoMutex.hpp"
 #include <assert.h>
 

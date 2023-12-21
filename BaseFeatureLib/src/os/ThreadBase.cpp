@@ -1,4 +1,4 @@
-#include "../../inc/thread/ThreadBase.h"
+#include "../../inc/os/ThreadBase.h"
 #include "../../inc/os/AutoMutex.hpp"
 #include "../../inc/os/Logger.h"
 #include <cassert>

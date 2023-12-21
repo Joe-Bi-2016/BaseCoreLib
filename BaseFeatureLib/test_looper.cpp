@@ -1,7 +1,7 @@
 #include "inc/os/Logger.h"
 #include "inc/base/TimeUtil.h"
-#include "inc/thread/MessageHandler.h"
-#include "inc/thread/LooperThread.h"
+#include "inc/looper/MessageHandler.h"
+#include "inc/looper/LooperThread.h"
 #include <iomanip>
 #include <typeinfo>
 #include <cstring>

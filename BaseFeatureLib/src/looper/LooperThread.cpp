@@ -1,5 +1,5 @@
-#include "../../inc/thread/LooperThread.h"
-#include "../../inc/thread/MessageHandler.h"
+#include "../../inc/looper/LooperThread.h"
+#include "../../inc/looper/MessageHandler.h"
 #include "../../inc/os/Logger.h"
 #include <iostream>
 

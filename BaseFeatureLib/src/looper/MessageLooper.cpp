@@ -1,6 +1,6 @@
-#include "../../inc/thread/MessageLooper.h"
-#include "../../inc/thread/MessageQueue.h"
-#include "../../inc/thread/MessageHandler.h"
+#include "../../inc/looper/MessageLooper.h"
+#include "../../inc/looper/MessageQueue.h"
+#include "../../inc/looper/MessageHandler.h"
 #include "../../inc/os/AutoMutex.hpp"
 #include "../../inc/os/Logger.h"
 #include <algorithm>

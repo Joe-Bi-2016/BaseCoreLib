@@ -1,6 +1,6 @@
-#include "../../inc/thread/MessageQueue.h"
-#include "../../inc/thread/MessageHandler.h"
-#include "../../inc/thread/MessageLooper.h"
+#include "../../inc/looper/MessageQueue.h"
+#include "../../inc/looper/MessageHandler.h"
+#include "../../inc/looper/MessageLooper.h"
 #include "../../inc/os/Logger.h"
 #include "../../inc/base/TimeUtil.h"
 #include <algorithm>
