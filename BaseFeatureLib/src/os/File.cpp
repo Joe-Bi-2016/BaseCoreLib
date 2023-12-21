@@ -1,10 +1,4 @@
-﻿/*****************************************************************************
-* Description: file implemention.
-* Author     : Bi ShengWang(shengwang.bisw@alibaba-inc.com.)
-* Date       : 2020.06.10
-* Copyright (c) alibaba All rights reserved.
-******************************************************************************/
-#include "../../inc/os/File.h"
+﻿#include "../../inc/os/File.h"
 #include "../../inc/os/FileUtil.h"
 #include "../../inc/os/Logger.h"
 #include <errno.h>

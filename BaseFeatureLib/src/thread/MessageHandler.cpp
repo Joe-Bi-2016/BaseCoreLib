@@ -1,9 +1,3 @@
-/*****************************************************************************
-* Description: message handler implemention.
-* Author     : Bi ShengWang(shengwang.bisw@alibaba-inc.com.)
-* Date       : 2020.06.03
-* Copyright (c) alibaba All rights reserved.
-******************************************************************************/
 #include "../../inc/thread/MessageHandler.h"
 #include "../../inc/thread/MessageLooper.h"
 #include "../../inc/thread/MessageQueue.h"

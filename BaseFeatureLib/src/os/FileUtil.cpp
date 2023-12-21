@@ -1,9 +1,3 @@
-/*****************************************************************************
-* Description: file util implemention.
-* Author     : Bi ShengWang(shengwang.bisw@alibaba-inc.com.)
-* Date       : 2020.06.11
-* Copyright (c) alibaba All rights reserved.
-******************************************************************************/
 #include "../../inc/os/FileUtil.h"
 #include <sys/types.h>
 #include <sys/stat.h>

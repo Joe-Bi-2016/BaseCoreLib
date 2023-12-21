@@ -1,9 +1,3 @@
-/*****************************************************************************
-* Description: interface to access assetFile by C-file implemention.
-* Author     : Bi ShengWang(shengwang.bisw@alibaba-inc.com.)
-* Date       : 2020.07.16
-* Copyright (c) alibaba All rights reserved.
-******************************************************************************/
 #include "../../inc/os/CAssetFile.h"
 #include "../../inc/os/AssetFile.h"
 

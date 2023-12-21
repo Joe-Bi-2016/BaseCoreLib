@@ -1,9 +1,3 @@
-/*****************************************************************************
-* Description: time util implemention.
-* Author     : Bi ShengWang(shengwang.bisw@alibaba-inc.com.)
-* Date       : 2020.05.28
-* Copyright (c) alibaba All rights reserved.
-******************************************************************************/
 #include "../../inc/base/TimeUtil.h"
 #include <time.h>
 #include <chrono>

@@ -1,9 +1,3 @@
-/*****************************************************************************
-* Description: message queue implemention.
-* Author     : Bi ShengWang(shengwang.bisw@alibaba-inc.com.)
-* Date       : 2020.06.04
-* Copyright (c) alibaba All rights reserved.
-******************************************************************************/
 #include "../../inc/thread/MessageQueue.h"
 #include "../../inc/thread/MessageHandler.h"
 #include "../../inc/thread/MessageLooper.h"

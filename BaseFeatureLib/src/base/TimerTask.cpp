@@ -1,9 +1,3 @@
-/*****************************************************************************
-* Description: message handler implemention.
-* Author     : Bi ShengWang(shengwang.bisw@alibaba-inc.com.)
-* Date       : 2020.06.03
-* Copyright (c) alibaba All rights reserved.
-******************************************************************************/
 #include "../../inc/base/TimerTask.h"
 #include "../../inc/os/AutoMutex.hpp"
 #include "../../inc/thread/MessageLooper.h"

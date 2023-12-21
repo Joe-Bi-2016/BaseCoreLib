@@ -1,9 +1,3 @@
-/*****************************************************************************
-* Description: handler thread implemention.
-* Author     : Bi ShengWang(shengwang.bisw@alibaba-inc.com.)
-* Date       : 2020.76.12
-* Copyright (c) alibaba All rights reserved.
-******************************************************************************/
 #include "../../inc/thread/LooperThread.h"
 #include "../../inc/thread/MessageHandler.h"
 #include "../../inc/os/Logger.h"

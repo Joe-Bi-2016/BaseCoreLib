@@ -1,9 +1,3 @@
-/*****************************************************************************
-* Description: message looper implemention.
-* Author     : Bi ShengWang(shengwang.bisw@alibaba-inc.com.)
-* Date       : 2020.06.05
-* Copyright (c) alibaba All rights reserved.
-******************************************************************************/
 #include "../../inc/thread/MessageLooper.h"
 #include "../../inc/thread/MessageQueue.h"
 #include "../../inc/thread/MessageHandler.h"
