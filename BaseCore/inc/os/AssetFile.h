@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : AssetFile.h
-* Description   : Android system access file function definition
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : AssetFile.h
+* Description : Android system access file function definition
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #ifndef __AssetFile_h__

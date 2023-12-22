@@ -1,9 +1,9 @@
 ﻿/*****************************************************************************
-* FileName      : File.cpp
-* Description   : File implemention
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : File.cpp
+* Description : File implemention
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #include "../../inc/os/File.h"

@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : CAssetFile.cpp
-* Description   : Interface to access assetFile by C-file implemention
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : CAssetFile.cpp
+* Description : Interface to access assetFile by C-file implemention
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #include "../../inc/os/CAssetFile.h"

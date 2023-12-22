@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : AutoMutex.hpp
-* Description   : Auto mutex lock definition
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : AutoMutex.hpp
+* Description : Auto mutex lock definition
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #ifndef __AutoMutex_h__

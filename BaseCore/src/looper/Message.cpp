@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : Message.cpp
-* Description   : Message implemention
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : Message.cpp
+* Description : Message implemention
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #include "../../inc/looper/Message.h"

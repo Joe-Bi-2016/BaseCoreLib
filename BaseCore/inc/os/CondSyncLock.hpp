@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : CondSyncLock.hpp
-* Description   : Multithread synchronize using mutex and condition lock definition
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : CondSyncLock.hpp
+* Description : Multithread synchronize using mutex and condition lock definition
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #ifndef __CondSyncLock_h__

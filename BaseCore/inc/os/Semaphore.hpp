@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : Semaphore.hpp
-* Description   : Synchronize semaphore definition
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : Semaphore.hpp
+* Description : Synchronize semaphore definition
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #ifndef __Semaphore_h__

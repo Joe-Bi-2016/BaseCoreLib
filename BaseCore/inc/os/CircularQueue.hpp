@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : CircularQueue.hpp
-* Description   : Circular queue definition
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : CircularQueue.hpp
+* Description : Circular queue definition
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #ifndef __CircularQueue_h__

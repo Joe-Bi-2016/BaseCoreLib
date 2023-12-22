@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : TimeUtil.h
-* Description   : Some time util function
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : TimeUtil.h
+* Description : Some time util function
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #ifndef __TimeUtil_h__

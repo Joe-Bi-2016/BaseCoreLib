@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : LooperThread.cpp
-* Description   : Looper thread implemention
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : LooperThread.cpp
+* Description : Looper thread implemention
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #include "../../inc/looper/LooperThread.h"

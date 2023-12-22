@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : LooperThread.h
-* Description   : Looper thread definition
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : LooperThread.h
+* Description : Looper thread definition
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #ifndef __LooperThread_h__

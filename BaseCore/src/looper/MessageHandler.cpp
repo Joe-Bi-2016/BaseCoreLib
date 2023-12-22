@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : MessageHandler.cpp
-* Description   : Message handler implemention
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : MessageHandler.cpp
+* Description : Message handler implemention
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #include "../../inc/looper/MessageHandler.h"

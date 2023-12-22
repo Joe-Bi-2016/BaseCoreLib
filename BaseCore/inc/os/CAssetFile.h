@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : CAssetFile.h
-* Description   : Interface to access assetFile by C-file definition
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : CAssetFile.h
+* Description : Interface to access assetFile by C-file definition
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #ifndef __CAssetFile_h__

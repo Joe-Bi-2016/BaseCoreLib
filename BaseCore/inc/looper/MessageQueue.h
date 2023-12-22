@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : MessageQueue.h
-* Description   : Message queue definition
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : MessageQueue.h
+* Description : Message queue definition
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #ifndef __MessageQueue_h__

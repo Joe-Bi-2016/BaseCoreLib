@@ -1,9 +1,9 @@
 /*****************************************************************************
-* FileName      : Condition.hpp
-* Description   : Synchronize condition definition
-* Author           : Joe.Bi
-* Date              : 2023-12
-* Version         : v1.0
+* FileName    : Condition.hpp
+* Description : Synchronize condition definition
+* Author      : Joe.Bi
+* Date        : 2023-12
+* Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
 #ifndef __Condition_h__
