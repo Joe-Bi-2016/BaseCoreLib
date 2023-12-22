@@ -1,5 +1,5 @@
 # Base core Libarary
-Support window, linux, apple android crossplatform base c/c++ feature kit libarary, it contain file operation, ,mutex, condition variable, semaphore, thread pool, circular queue, looper that similar with android and support c++11 and posix standard.
+Support window, linux, macos and android crossplatform base c/c++ feature kit libarary, it contain file operation, ,mutex, condition variable, semaphore, thread pool, circular queue, looper that similar with android and support c++11 and posix standard.
 spdlog library for log.
  
 Note: If want generate library, should change CMakeLists.txt.
