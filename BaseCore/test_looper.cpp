@@ -31,8 +31,6 @@ class myMsgHandlerFn : public MsgHandlerFunc
 		}
 };
 
-int exitWhat = 100000;
-
 void msgHandler(const Message& msg, void* context)
 {
 	void *p = msg->getParam();
@@ -53,10 +51,14 @@ void freeMem(void* obj, size_t bytes)
 /////////////////////////////////////////////////////////////////////////////////////////////////
 int main(void)
 {	
-	LOGI("%lld", utcMicrosTime2String(getNowTimeOfUs()));
+	int exitWhat, exitModel;
+	LOGI("%s", "enter what number message that you want test:");
+	cin >> exitWhat;
+	LOGI("%s", "enter quit model that you want test(0: general quit 1: safy quit)");
+	cin >> exitModel;
 
 	LooperThread* looperThread = new LooperThread("TestHandlerThread");
-	Looper loop = looperThread->getLooper();
+	Looper loop = looperThread->getLooper();	
 
 	LOGI("%s", "start to ....");
 
@@ -70,7 +72,7 @@ int main(void)
 	{
 		if(i == exitWhat)
 		{
-			looperThread->quit();
+			exitModel == 0 ? looperThread->quit() : looperThread->quitSafely();
 			break;
 		}
 

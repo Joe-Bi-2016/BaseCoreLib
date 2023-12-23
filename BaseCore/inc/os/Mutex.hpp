@@ -64,6 +64,7 @@ __BEGIN__
 
             ~Mutex(void)
             {
+                if (!mMutex) return;
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
                 delete mMutex; mMutex = nullptr;
 #else
@@ -73,6 +74,7 @@ __BEGIN__
 
             void lock(void)
             {
+                if (!mMutex) return;
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
                 if (mMutexType == PTHREAD_MUTEX_TIMED_NP)
                     ((std::mutex*)mMutex)->lock();
@@ -89,6 +91,7 @@ __BEGIN__
 
             int trylock(void)
             {
+                if (!mMutex) return -1;
                 bool ret = false;
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
                 if (mMutexType == PTHREAD_MUTEX_TIMED_NP)
@@ -107,6 +110,7 @@ __BEGIN__
 
             void unlock(void)
             {
+                if (!mMutex) return;
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
                 if (mMutexType == PTHREAD_MUTEX_TIMED_NP)
                     ((std::mutex*)mMutex)->unlock();
