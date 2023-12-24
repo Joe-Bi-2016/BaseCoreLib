@@ -49,9 +49,9 @@ __BEGIN__
             thread_local static Looper  mThreadLocal;
             Queue                                 mQueue;
             uint64                                  mThreadId;
-            thread_local static Mutex    mMutex;
-             bool                                    mExit;
-             bool                                    mPromoteThrLevel;
+            thread_local static Mutex   mMutex;
+            bool                                    mExit;
+            bool                                    mPromoteThrLevel;
     };
 
 __END__
