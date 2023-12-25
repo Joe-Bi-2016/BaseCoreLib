@@ -35,8 +35,8 @@ __BEGIN__
         void sendTimerTaskMsg(int what, int arg1, int arg2 = 0, int timeout = 0, void *data = nullptr, size_t bytes = 0,  const paramDeleter& fnFree = nullptr, bool isRemoved = false);
     
     private:
-        thread_local static Mutex gMutex;
-        thread_local static Looper  mLoop;
+        static Mutex gMutex;
+        threadlocal static Looper  mLoop;
         Handler mHandler;
     };
     

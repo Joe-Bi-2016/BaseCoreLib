@@ -54,8 +54,8 @@ __BEGIN__
     }
 
    //------------------------------------------------------------------------------------//
-    thread_local Looper MsgLooper::mThreadLocal(nullptr);
-    thread_local Mutex MsgLooper::mMutex(PTHREAD_MUTEX_RECURSIVE_NP);
+    threadlocal Looper MsgLooper::mThreadLocal(nullptr);
+    Mutex MsgLooper::mMutex(PTHREAD_MUTEX_RECURSIVE_NP);
 
    //------------------------------------------------------------------------------------//
     MsgLooper::MsgLooper(const char* msgQueueName, int msgQueueMaxCnt, uint64 tid)
@@ -110,21 +110,30 @@ __BEGIN__
     }
 
    //------------------------------------------------------------------------------------//
+   // Note: operate message queues don't need to be mutually exclusive 
+   // because operations on it are all secure, each step is akin to an atomic operation. 
+   // Isn't the purpose of mutex to ensure the integrity of access to the same 
+   // data in multiple threads? 
     void MsgLooper::loop(void)
     {
-        AutoMutex lock(&mMutex);
-
-        Looper loop = myLooper();
-        if(loop.get() == nullptr)
         {
-            LOGW("%s", "No looper; MsgLooper.prepare() wasn't called on this thread.");
-            return;
+            AutoMutex lock(&mMutex);
+            if (myLooper() == nullptr)
+            {
+                LOGW("%s", "No looper; MsgLooper.prepare() wasn't called on this thread.");
+                return;
+            }
         }
 
-        Queue queue = loop->getMsgQueue(); 
         for(;;)
         {
-            if (mExit && queue.get() == nullptr)
+            if (mQueue.get() == nullptr)
+            {
+                LOGE("%s", "Error: Message queue had been destroyed.");
+                return;
+            }
+
+            if (mExit && mQueue->getQueueSize() == 0)
             {
                 LOGW("%s", "Warning: Message looper had exited and Message queue is empty.");
                 return;
@@ -147,19 +156,13 @@ __BEGIN__
                 pthread_setschedparam(thread, policy, &sch);
 #endif
             }
-
-            if(queue.get() == nullptr)
-            {
-                LOGE("%s", "Error: Message queue had been destroyed.");
-                return;
-            }
-
-            Message msg = queue->next();
+            
+            Message msg = mQueue->next();
             if(msg.get())
             {
                 assert(msg->mTarget);
                 msg->mTarget->dispatchMessage(msg);
-                queue->recycleMsg(std::move(msg));
+                mQueue->recycleMsg(std::move(msg));
             }
             else
             {
@@ -172,14 +175,14 @@ __BEGIN__
    //------------------------------------------------------------------------------------//
     void MsgLooper::quit(bool safely /*= false */)
     {
-        AutoMutex lock(&mMutex);
-
-        if(mExit)
+        // don't need mutex, because setting boolean type of mExit and 
+        // mPromoteThrLevel is atomic operation, and queue operation is also atomic.
+        if (mExit)
             return;
 
-        if(mQueue)
+        if (mQueue)
             mQueue->quit(safely);
-        
+
         if (safely)
             mPromoteThrLevel = true;
 

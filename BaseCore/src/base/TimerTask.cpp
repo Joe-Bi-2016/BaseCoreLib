@@ -14,8 +14,8 @@
 __BEGIN__
 
     //------------------------------------------------------------------------------------//
-    thread_local Mutex TimerTask::gMutex;
-    thread_local Looper  TimerTask::mLoop = nullptr;
+    Mutex TimerTask::gMutex;
+    threadlocal Looper  TimerTask::mLoop = nullptr;
 
     //------------------------------------------------------------------------------------//
     enum Timer_Message_Type

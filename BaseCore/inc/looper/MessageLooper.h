@@ -35,7 +35,7 @@ __BEGIN__
 
             void quit(bool safely = false);
 
-            bool hadExit(void) { AutoMutex lock(&mMutex); return mExit; }
+            bool hadExit(void) { return mExit; }
 
             uint64 getThredId(void) const { AutoMutex lock(&mMutex); return mThreadId; }
 
@@ -46,12 +46,12 @@ __BEGIN__
             ~MsgLooper(void);
             
         private:
-            thread_local static Looper  mThreadLocal;
-            Queue                                 mQueue;
-            uint64                                  mThreadId;
-            thread_local static Mutex   mMutex;
-            bool                                    mExit;
-            bool                                    mPromoteThrLevel;
+            threadlocal static Looper mThreadLocal;
+            Queue                               mQueue;
+            volatile uint64                   mThreadId;
+            static Mutex                      mMutex;
+            volatile bool                     mExit;
+            bool                                  mPromoteThrLevel;
     };
 
 __END__

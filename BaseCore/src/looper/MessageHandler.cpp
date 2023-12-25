@@ -32,7 +32,7 @@ __BEGIN__
     , mContext(nullptr)
     , mMutex(nullptr)
     { 
-        mMutex = new Mutex(PTHREAD_MUTEX_RECURSIVE_NP);
+        mMutex = new Mutex();
     }
 
    //------------------------------------------------------------------------------------//

@@ -102,8 +102,10 @@
 
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
     #define SNPRINTF         _snprintf_s
+    #define threadlocal       thread_local
 #else
     #define SNPRINTF         snprintf
+    #define threadlocal       __thread
 #endif
 
 __BEGIN__
