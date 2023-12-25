@@ -51,13 +51,18 @@ void freeMem(void* obj, size_t bytes)
 /////////////////////////////////////////////////////////////////////////////////////////////////
 int main(void)
 {	
-	int exitWhat, exitModel, sleepMilliseconds = 0, msgPoolSize = 50;
+	int exitWhat, exitModel, sleepMilliseconds = -1, msgPoolSize = 50;
 	LOGI("%s", "Enter the number of messages you want test:");
 	cin >> exitWhat;
 	LOGI("%s", "Enter quit model that you want test(0: general quit 1: safy quit):");
 	cin >> exitModel;
 	LOGI("%s", "Enter the interval between message sending(millisecond >= 0):");
-	cin >> sleepMilliseconds;
+	while (sleepMilliseconds < 0)
+	{
+		cin >> sleepMilliseconds;
+		if(sleepMilliseconds < 0)
+			LOGI("%s", "Please enter an integer greater than or equal to 0");
+	}
 	LOGI("%s", "Enter the messge pool size:");
 	cin >> msgPoolSize;
 
