@@ -52,18 +52,18 @@ void freeMem(void* obj, size_t bytes)
 int main(void)
 {	
 	int exitWhat, exitModel, sleepMilliseconds = -1, msgPoolSize = 50;
-	LOGI("%s", "Enter the number of messages you want test:");
+	LOGI("[mainThread]-%s", "Enter the number of messages you want test:");
 	cin >> exitWhat;
-	LOGI("%s", "Enter quit model that you want test(0: general quit 1: safy quit):");
+	LOGI("[mainThread]-%s", "Enter quit model that you want test(0: general quit 1: safy quit):");
 	cin >> exitModel;
-	LOGI("%s", "Enter the interval between message sending(millisecond >= 0):");
+	LOGI("[mainThread]-%s", "Enter the interval between message sending(millisecond >= 0):");
 	while (sleepMilliseconds < 0)
 	{
 		cin >> sleepMilliseconds;
 		if(sleepMilliseconds < 0)
-			LOGI("%s", "Please enter an integer greater than or equal to 0");
+			LOGI("[mainThread]-%s", "Please enter an integer greater than or equal to 0");
 	}
-	LOGI("%s", "Enter the messge pool size:");
+	LOGI("[mainThread]-%s", "Enter the messge pool size:");
 	cin >> msgPoolSize;
 
 	LooperThread* looperThread = new LooperThread("LooperThread", msgPoolSize);
@@ -109,7 +109,67 @@ int main(void)
 	delete looperThread;
 	looperThread = NULL;
 
-	LOGI("looper shared cnt = %ld", loop.use_count());
+	LOGI("SubLooper shared cnt = %ld", loop.use_count());
+
+	//////////////////////////////////////////////////////////////////////////////
+	// test looper in main thread, subthread send message
+	LOGI("\n\n[SubThread] --- %s", "Test sending message in subthread to main looper");
+	LOGI("[SubThread]-%s", "Enter the number of messages you want test:");
+	std::cin >> exitWhat;
+	LOGI("[SubThread]-%s", "Enter quit model that you want test(0: general quit 1: safy quit):");
+	cin >> exitModel;
+	LOGI("[SubThread]-%s", "Enter the interval between message sending(millisecond >= 0):");
+	sleepMilliseconds = -1;
+	while (sleepMilliseconds < 0)
+	{
+		cin >> sleepMilliseconds;
+		if (sleepMilliseconds < 0)
+			LOGI("[SubThread]-%s", "Please enter an integer greater than or equal to 0");
+	}
+	LOGI("[SubThread]-%s", "Enter the messge pool size:");
+	cin >> msgPoolSize;
+
+	Looper mainLoop = MsgLooper::prepare(msgPoolSize);
+	Handler mainH = MsgHandler::createHandler(mainLoop);
+	mainH->setMsgHandlerFunc(msgHandler);
+	std::thread th([=](void) {
+		const char* ptr = "test subthread send message ";
+		
+		int i = 0;
+		for (; ; )
+		{
+			if (i == exitWhat)
+			{
+				exitModel == 0 ? mainLoop->quit() : mainLoop->quit(true);
+				break;
+			}
+
+			char* strparam = (char*)malloc(100 * sizeof(char));
+			memset(strparam, 0x0, sizeof(char) * 100);
+			snprintf(strparam, 100, "%s%d", ptr, i);
+
+			Message msg = std::move(Msg::obtain(i, mainH));
+			msg->setParam(strparam, strlen(strparam) + 1, freeMem);
+
+			mainH->sendMessage(std::move(msg));
+
+#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+			Sleep(sleepMilliseconds);
+#else
+			usleep((sleepMilliseconds / 1000));
+#endif
+
+			i++;
+		}
+		});
+	th.detach();
+	
+	mainLoop->loop();
+
+	mainLoop->getMsgQueue()->dumpQueueList();
+	mainLoop->getMsgQueue()->dumpQueuePool();
+
+	LOGI("mainLoop shared cnt = %ld", mainLoop.use_count());
 
 	system("pause");
 
