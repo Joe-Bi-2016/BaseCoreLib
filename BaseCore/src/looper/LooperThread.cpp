@@ -29,16 +29,17 @@ __BEGIN__
     }
 
    //------------------------------------------------------------------------------------//
-    LooperThread::LooperThread(const char* name, bool looperInCurrThread /*= false*/)
+    LooperThread::LooperThread(const char* name, int msgPoolSize/* = 50*/,  bool looperInCurrThread /*= false*/)
     : mLooperThr(nullptr) 
     , mThreadName(name)
     , mLooperInCurrThread(looperInCurrThread)
 #if (defined(__linux__) || defined(__APPLE__))
     , mIsRunning(false)
 #endif
+    , mMsgPoolSize(msgPoolSize)
     , mLooperExited(false)
     {
-        mLooper = mLooperInCurrThread ? MsgLooper::prepare() : nullptr;
+        mLooper = mLooperInCurrThread ? MsgLooper::prepare(mMsgPoolSize) : nullptr;
     }
 
    //------------------------------------------------------------------------------------//
@@ -136,7 +137,7 @@ __BEGIN__
     {
         if(mLooper.get() == nullptr)
         {
-            mLooper = MsgLooper::prepare();
+            mLooper = MsgLooper::prepare(mMsgPoolSize);
 #if (defined(__linux__) || defined(__APPLE__))
             mIsRunning = true;
             mSem.post();

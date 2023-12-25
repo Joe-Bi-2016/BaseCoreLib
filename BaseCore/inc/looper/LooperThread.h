@@ -24,7 +24,7 @@ __BEGIN__
     class LooperThread 
     {
         public:
-            LooperThread(const char *name, bool looperInCurrThread = false);
+            LooperThread(const char *name, int msgPoolSize = 50, bool looperInCurrThread = false);
 
             ~LooperThread(void);
 
@@ -57,6 +57,7 @@ __BEGIN__
             std::promise<bool> mIsRunning;
 #endif
             Looper                      mLooper;
+            int                             mMsgPoolSize;
             bool                          mLooperExited;
 
             friend static void threadlooper_entry(void* param);

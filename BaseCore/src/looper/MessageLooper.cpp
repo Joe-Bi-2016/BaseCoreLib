@@ -58,13 +58,13 @@ __BEGIN__
     Mutex MsgLooper::mMutex(PTHREAD_MUTEX_RECURSIVE_NP);
 
    //------------------------------------------------------------------------------------//
-    MsgLooper::MsgLooper(const char* msgQueueName, int msgQueueMaxCnt, uint64 tid)
+    MsgLooper::MsgLooper(const char* msgQueueName, int msgQueuePoolMaxSize, uint64 tid)
     : mQueue(0)
     , mThreadId(0)
     , mExit(false)
     , mPromoteThrLevel(false)
     {
-        mQueue = Queue(new MsgQueue(msgQueueName, msgQueueMaxCnt), deleter<MsgQueue>());
+        mQueue = Queue(new MsgQueue(msgQueueName, msgQueuePoolMaxSize), deleter<MsgQueue>());
         mThreadId = tid;
         LOGD("Message queue name = %s, ThreadId = %llu", msgQueueName, mThreadId);
     }
@@ -80,7 +80,7 @@ __BEGIN__
     }
 
    //------------------------------------------------------------------------------------//
-    Looper MsgLooper::prepare(int msgQueueMaxSize /* = 50 */)
+    Looper MsgLooper::prepare(int msgQueuePoolMaxSize /* = 50 */)
     {
         AutoMutex lock(&mMutex);
 
@@ -89,7 +89,7 @@ __BEGIN__
             uint64 tid = getCurrentThreadId();
             char name[64] = { 0 };
             SNPRINTF(name, 64, "%s%llu%s", "Thread_", tid, "_MsgQueue");
-            mThreadLocal = Looper(new MsgLooper(name, msgQueueMaxSize, tid), deleter<MsgLooper>());
+            mThreadLocal = Looper(new MsgLooper(name, msgQueuePoolMaxSize, tid), deleter<MsgLooper>());
         }
 
         return mThreadLocal;

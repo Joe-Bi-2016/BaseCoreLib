@@ -23,7 +23,7 @@ __BEGIN__
 
         public:            
 
-            static Looper prepare(int msgQueueMaxSize = 50);
+            static Looper prepare(int msgQueuePoolMaxSize = 50);
 
             static Looper myLooper(void);
 
@@ -42,7 +42,7 @@ __BEGIN__
             void setTestWaitTime(long outTimeMillisExit) { getMsgQueue()->setTestOutTimeMillisExit(outTimeMillisExit); }
 
         private:
-            MsgLooper(const char* msgQueueName, int msgQueueMaxCnt, uint64 tid);
+            MsgLooper(const char* msgQueueName, int msgQueuePoolMaxSize, uint64 tid);
             ~MsgLooper(void);
             
         private:
