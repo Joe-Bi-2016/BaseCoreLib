@@ -13,12 +13,12 @@
 #ifdef LOG_TAG
 #undef LOG_TAG
 #endif
-#define LOG_TAG (MAIN):
+#define LOG_TAG (TestLooper):
 
 using namespace Root::Core;
 using namespace std;
 
-///////////////////////////////////////////////////////////////////////////
+/////////////////////////////////////////////////////////////////////////////////////////////////
 class myMsgHandlerFn : public MsgHandlerFunc
 {
 	public:
@@ -51,11 +51,13 @@ void freeMem(void* obj, size_t bytes)
 /////////////////////////////////////////////////////////////////////////////////////////////////
 int main(void)
 {	
-	int exitWhat, exitModel;
-	LOGI("%s", "enter what number message that you want test:");
+	int exitWhat, exitModel, sleepMilliseconds = 0;
+	LOGI("%s", "Enter the number of messages you want test:");
 	cin >> exitWhat;
-	LOGI("%s", "enter quit model that you want test(0: general quit 1: safy quit)");
+	LOGI("%s", "Enter quit model that you want test(0: general quit 1: safy quit):");
 	cin >> exitModel;
+	LOGI("%s", "Enter the interval between message sending(millisecond >= 0):");
+	cin >> sleepMilliseconds;
 
 	LooperThread* looperThread = new LooperThread("TestHandlerThread");
 	Looper loop = looperThread->getLooper();	
@@ -84,6 +86,12 @@ int main(void)
 		msg->setParam(strparam, strlen(strparam) + 1, freeMem);
 
 		h->sendMessage(std::move(msg));
+
+#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+		Sleep(sleepMilliseconds);
+#else
+		usleep((sleepMilliseconds / 1000));
+#endif
 
 		i++;
 	}
