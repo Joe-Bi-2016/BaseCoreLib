@@ -58,10 +58,10 @@ __BEGIN__
     
         void runThreadFunc()
         {
-            LOGD("%s", "------------- RUNNING User-thread function -------------");
+            LOGI("%s\n", "------------- RUNNING User-thread function -------------");
             this->unlock();
             this->mFunc(this->mArg);
-            LOGD("%s", "--------------- User-thread function  END  ---------------");
+            LOGI("%s\n", "--------------- User-thread function  END  ----------------");
         }
     
         void lock()

@@ -883,20 +883,25 @@ __BEGIN__
     {
         AutoMutex critical(&mLock);
         Msg* p = mMsgQueue.get();
-        LOGI("%s", "---------------------Message queue begin---------------------");
+        printf("\n");
+        LOGI("%s\n\n", "---------------------Message queue begin---------------------");
         for(;;)
         {
             if (p)
             {
-                LOGI("Message  of queue shared_ptr = %p, what = %d, when = %llu, Using = %s",
-                       p, p->mWhat, p->mWhen, p->isInUse() ? "true" : "false");
+                std::string s;
+                if (p->mNext.get())
+                    s = "Message  of queue shared_ptr = %p, what = %d, when = %llu, Using = %s";
+                else
+                    s = "Message  of queue shared_ptr = %p, what = %d, when = %llu, Using = %s\n";
+                LOGI(s.c_str(), p, p->mWhat, p->mWhen, p->isInUse() ? "true" : "false");
                 p = p->mNext.get();       
             }
             else    
                 break;
         }
 
-        LOGI("%s", "----------------------Message queue end----------------------");
+        LOGI("%s\n", "----------------------Message queue end----------------------");
     }   
 
    //------------------------------------------------------------------------------------//
@@ -904,20 +909,25 @@ __BEGIN__
     {
         AutoMutex critical((Mutex* const)&mMsgPoolMutex);
         Msg* p = mMsgPool.get();
-         LOGI("%s", "---------------------Message pool begin----------------------");
+        printf("\n");
+        LOGI("%s\n\n", "---------------------Message pool begin----------------------");
         for(;;)
         {
             if (p)
             {
-                LOGI("Message of pool shared_ptr = %p, what = %d, when = %llu, Using = %s",
-                       p, p->mWhat, p->mWhen, p->isInUse() ? "true" : "false");
+                std::string s;
+                if (p->mNext.get())
+                    s = "Message of pool shared_ptr = %p, what = %d, when = %llu, Using = %s";
+                else
+                    s = "Message of pool shared_ptr = %p, what = %d, when = %llu, Using = %s\n";
+                LOGI(s.c_str(), p, p->mWhat, p->mWhen, p->isInUse() ? "true" : "false");
                 p = p->mNext.get();       
             }
             else
                 break;
         }
 
-        LOGI("%s", "----------------------Message pool end-----------------------");
+        LOGI("%s\n", "----------------------Message pool end-----------------------");
     }
 
 __END__
