@@ -147,7 +147,6 @@ __BEGIN__
                 int policy = GetThreadPriority(GetCurrentThread());
                 policy += THREAD_PRIORITY_ABOVE_NORMAL;
                 SetThreadPriority(GetCurrentThread(), policy);
-                mPromoteThrLevel = false;
 #else
                 int policy;
                 sched_param sch;
@@ -155,6 +154,7 @@ __BEGIN__
                 sch.sched_priority += 1;
                 pthread_setschedparam(thread, policy, &sch);
 #endif
+                mPromoteThrLevel = false;
             }
             
             Message msg = mQueue->next();
