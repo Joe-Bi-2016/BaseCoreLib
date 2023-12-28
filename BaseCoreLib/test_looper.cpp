@@ -52,21 +52,21 @@ void freeMem(void* obj, size_t bytes)
 int main(void)
 {	
 	int exitWhat, exitModel, sleepMilliseconds = -1, msgPoolSize = 50;
-	LOGI("%s", "#############################################################");
-	LOGI("%s", "# Start test main thread send message to looper of subthrad #");
-	LOGI("%s", "#############################################################");
-	LOGI("[mainThread]-%s", "Enter the number of messages you want test:>");
+	LOGI("%s", "**************************************************************");
+	LOGI("%s", "* Start test main thread send message to looper of subthrad *");
+	LOGI("%s", "**************************************************************");
+	LOGI("[mainThread]-%s", "Enter the number of messages you want test:->");
 	cin >> exitWhat;
-	LOGI("[mainThread]-%s", "Enter quit model that you want test(0: general quit 1: safy quit):>");
+	LOGI("[mainThread]-%s", "Enter quit model that you want test(0: general quit 1: safy quit):->");
 	cin >> exitModel;
-	LOGI("[mainThread]-%s", "Enter the interval between message sending(millisecond >= 0):>");
+	LOGI("[mainThread]-%s", "Enter the interval between message sending(millisecond >= 0):->");
 	while (sleepMilliseconds < 0)
 	{
 		cin >> sleepMilliseconds;
 		if(sleepMilliseconds < 0)
-			LOGI("[mainThread]-%s", "Please enter an integer greater than or equal to 0 :>");
+			LOGI("[mainThread]-%s", "Please enter an integer greater than or equal to 0 :->");
 	}
-	LOGI("[mainThread]-%s", "Enter the messge pool size:>");
+	LOGI("[mainThread]-%s", "Enter the messge pool size:->");
 	cin >> msgPoolSize;
 
 	LooperThread* looperThread = new LooperThread("LooperThread", msgPoolSize);
@@ -114,23 +114,22 @@ int main(void)
 
 	//////////////////////////////////////////////////////////////////////////////
 	// test looper in main thread, subthread send message
-	LOGI("%s", "#############################################################");
-	LOGI("%s", "#    Start test subthread send message to looper of main    #");
-	LOGI("%s", "#############################################################");
-	LOGI("[SubThread] --- %s", "Test sending message in subthread to main looper");
-	LOGI("[SubThread]-%s", "Enter the number of messages you want test:");
+	LOGI("%s", "********************************************************");
+	LOGI("%s", "* Start test subthread send message to looper of main *");
+	LOGI("%s", "********************************************************");
+	LOGI("[SubThread]-%s", "Enter the number of messages you want test:->");
 	std::cin >> exitWhat;
-	LOGI("[SubThread]-%s", "Enter quit model that you want test(0: general quit 1: safy quit):");
+	LOGI("[SubThread]-%s", "Enter quit model that you want test(0: general quit 1: safy quit):->");
 	cin >> exitModel;
-	LOGI("[SubThread]-%s", "Enter the interval between message sending(millisecond >= 0):");
+	LOGI("[SubThread]-%s", "Enter the interval between message sending(millisecond >= 0):->");
 	sleepMilliseconds = -1;
 	while (sleepMilliseconds < 0)
 	{
 		cin >> sleepMilliseconds;
 		if (sleepMilliseconds < 0)
-			LOGI("[SubThread]-%s", "Please enter an integer greater than or equal to 0");
+			LOGI("[SubThread]-%s", "Please enter an integer greater than or equal to 0 : ->");
 	}
-	LOGI("[SubThread]-%s", "Enter the messge pool size:");
+	LOGI("[SubThread]-%s", "Enter the messge pool size:->");
 	cin >> msgPoolSize;
 
 	Looper mainLoop = MsgLooper::prepare(msgPoolSize);

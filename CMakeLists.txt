@@ -7,6 +7,6 @@ if(MSVC)
 	endif()
 endif()
 
-project ("BaseCore")
+project ("BaseCoreLib")
 
-add_subdirectory ("BaseCore")
+add_subdirectory ("BaseCoreLib")
