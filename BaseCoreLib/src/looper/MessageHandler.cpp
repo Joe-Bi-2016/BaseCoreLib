@@ -28,11 +28,12 @@ __BEGIN__
     , mQueue(nullptr)
     , mCallback(nullptr)
     , mMessageHandlerFn(nullptr)
+    , mMsgHandlerObj(nullptr)
     , mmsgCallbackObj(nullptr)
     , mContext(nullptr)
     , mMutex(nullptr)
     { 
-        mMutex = new Mutex();
+        mMutex = new Mutex(PTHREAD_MUTEX_RECURSIVE_NP);
     }
 
    //------------------------------------------------------------------------------------//
@@ -40,6 +41,7 @@ __BEGIN__
     {
         mCallback = nullptr;
         mMessageHandlerFn = nullptr;
+        mMsgHandlerObj = nullptr;
         mmsgCallbackObj = nullptr;
         mContext = nullptr;
         delete mMutex;
@@ -156,6 +158,13 @@ __BEGIN__
         mMessageHandlerFn = fn;
     }
 
+    //------------------------------------------------------------------------------------//
+    void MsgHandler::setMsgHandlerFunc(const MsgHandlerObj& obj)
+    {
+        AutoMutex critical(mMutex);
+        mMsgHandlerObj = const_cast<MsgHandlerObj*>(&obj);
+    }
+
    //------------------------------------------------------------------------------------//
     void MsgHandler::setMsgCallbackObject(const HandlerCallback* callbackObj)
     {
@@ -257,19 +266,16 @@ __BEGIN__
         else
         {
             // presume your do not change the callback when this function is doing
-//          AutoMutex critical(mMutex);
-
+          AutoMutex critical(mMutex);
             // defalut callback of handler
-            if (mCallback)
-                mCallback(msg, mContext);
-            else
-            {
-                // message handle
-                if (mMessageHandlerFn)
-                    mMessageHandlerFn(msg, mContext);
-                else if(mmsgCallbackObj)
-                    mmsgCallbackObj->onHandler(msg);
-            }
+          if (mCallback)
+              mCallback(msg, mContext);
+          else  if (mMessageHandlerFn)
+              mMessageHandlerFn(msg, mContext);
+          else if (mMsgHandlerObj)
+              (*mMsgHandlerObj)(msg, mContext);
+          else if (mmsgCallbackObj)
+              mmsgCallbackObj->onHandler(msg);
         }    
     }
 

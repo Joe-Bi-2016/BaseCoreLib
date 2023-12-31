@@ -19,24 +19,24 @@ using namespace Root::Core;
 using namespace std;
 
 /////////////////////////////////////////////////////////////////////////////////////////////////
-class myMsgHandlerFn : public MsgHandlerFunc
+class myMsgHandlerObj : public MsgHandlerObj
 {
 	public:
-        void operator()(const Message& msg) 
+        void operator()(const Message& msg, void* context)
         { 
 			void* p = msg->getParam();
 			stringstream s;
-			s << "What = " << msg->mWhat << " Param = " << (p ? (char*)p : "NULL") << endl;
-			LOGD("%s", s.str().c_str());
+			s << "what = " << msg->mWhat << " param = " << (p ? (char*)p : "nullptr") << endl;
+			LOGD("[myMsgHandlerObj]:%s", s.str().c_str());
 		}
 };
 
-void msgHandler(const Message& msg, void* context)
+void msgHandlerFun(const Message& msg, void* context)
 {
 	void *p = msg->getParam();
 	stringstream s;
-	s << "What = " << msg->mWhat << " Param = " << (p ? (char *)p : "NULL") << endl;
-	LOGI("%s", s.str().c_str());
+	s << "what = " << msg->mWhat << " param = " << (p ? (char *)p : "nullptr") << endl;
+	LOGI("[msgHandlerFun]:%s", s.str().c_str());
 }
 
 void freeMem(void* obj, size_t bytes)
@@ -73,7 +73,7 @@ int main(void)
 	Looper loop = looperThread->getLooper();	
 
 	Handler h = MsgHandler::createHandler(loop);
-	h->setMsgHandlerFunc(msgHandler);
+	h->setMsgHandlerFunc(msgHandlerFun);
 
 	const char* ptr = "test message ";
 
@@ -100,7 +100,6 @@ int main(void)
 #else
 		usleep((sleepMilliseconds / 1000));
 #endif
-
 		i++;
 	}
 
@@ -108,7 +107,7 @@ int main(void)
 	loop->getMsgQueue()->dumpQueuePool();
 
 	delete looperThread;
-	looperThread = NULL;
+	looperThread = nullptr;
 
 	LOGI("SubLooper shared cnt = %ld\n", loop.use_count());
 
@@ -134,7 +133,8 @@ int main(void)
 
 	Looper mainLoop = MsgLooper::prepare(msgPoolSize);
 	Handler mainH = MsgHandler::createHandler(mainLoop);
-	mainH->setMsgHandlerFunc(msgHandler);
+	myMsgHandlerObj msgHandlerObj;
+	mainH->setMsgHandlerFunc(msgHandlerObj);
 	std::thread th([=](void) {
 		const char* ptr = "test subthread send message ";
 		
@@ -161,7 +161,6 @@ int main(void)
 #else
 			usleep((sleepMilliseconds / 1000));
 #endif
-
 			i++;
 		}
 		});

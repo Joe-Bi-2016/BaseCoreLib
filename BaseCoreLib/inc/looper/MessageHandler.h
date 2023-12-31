@@ -15,12 +15,12 @@
 __BEGIN__
     
     //------------------------------------------------------------------------------------//
-    class API_EXPORTS MsgHandlerFunc
+    class API_EXPORTS MsgHandlerObj
     {
         public:
-            MsgHandlerFunc() = default;
-            virtual ~MsgHandlerFunc(void) { }
-            virtual void operator()(const Message& msg) { }
+            MsgHandlerObj() = default;
+            virtual ~MsgHandlerObj(void) { }
+            virtual void operator()(const Message& msg, void* context) = 0;
     };
 
    //------------------------------------------------------------------------------------//
@@ -59,6 +59,8 @@ __BEGIN__
             void sendMessageAtFrontOfQueue(Message msg);
 
             void setMsgHandlerFunc(const messageHandlerFunc& fn);
+
+            void setMsgHandlerFunc(const MsgHandlerObj& obj);
 
             void setMsgCallbackObject(const HandlerCallback* callbackObj);
 
@@ -101,6 +103,7 @@ __BEGIN__
             Queue                           mQueue;
             messageCallback          mCallback;          // defalut message handler function
             messageHandlerFunc   mMessageHandlerFn;  // user messge handler function
+            MsgHandlerObj*           mMsgHandlerObj; // user message handler object
             HandlerCallback*          mmsgCallbackObj;
             void*                             mContext;
             mutable Mutex*           mMutex;
