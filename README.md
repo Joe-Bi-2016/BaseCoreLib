@@ -1,18 +1,19 @@
 # Base core Libarary
-Support window, linux, macos and android crossplatform base c/c++ feature kit libarary, it contain file operation, ,mutex, condition variable, semaphore, thread pool, circular queue, looper that similar with android and support c++11 and posix standard.
-spdlog library for log.
- 
-Note: If want generate library, should change basecore/CMakeLists.txt's add_executable to target_link_libraries.
+Support window, linux, macos and android crossplatform base c/c++ feature kit libarary, it contain file operation, ,mutex, condition variable, semaphore, thread pool, circular queue, looper that similar with android and support c++11 and posix standard.spdlog library for log.
 
-window: 
+## Note:
+If want generate library, should change basecore/CMakeLists.txt's add_executable to target_link_libraries.
+
+## window: 
 use Cmake-GUI to generate vs project and build it.
 
-linux/android/macos:
+## linux/android/macos:
 1. enter BaseCore directory, mkdir build
 2. cmake & make
 
-Example:
+## Example:
 
+```
 class myMsgHandlerObj : public MsgHandlerObj
 {
 	public:
@@ -38,8 +39,9 @@ void freeMem(void* obj, size_t bytes){
 	}
 }
 
-#1-> main thread send message to looper of subthrad:
-
+```
+###### >1 main thread send message to looper of subthrad:
+```
 LooperThread* looperThread = new LooperThread("LooperThread", msgPoolSize);
 Looper loop = looperThread->getLooper();	
 
@@ -77,8 +79,9 @@ loop->getMsgQueue()->dumpQueuePool();
 
 delete looperThread;
 looperThread = nullptr;
-
-#2-> subthread send message to looper of main
+```
+###### >2 subthread send message to looper of main
+```
 Looper mainLoop = MsgLooper::prepare(msgPoolSize);
 Handler mainH = MsgHandler::createHandler(mainLoop);
 myMsgHandlerObj msgHandlerObj;
@@ -114,3 +117,4 @@ std::thread th([=](void) {
 th.detach();
 	
 mainLoop->loop();
+```
