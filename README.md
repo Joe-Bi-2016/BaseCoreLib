@@ -40,7 +40,7 @@ void freeMem(void* obj, size_t bytes){
 }
 
 ```
-###### >1 main thread send message to looper of subthrad:
+###### >1 main thread send message to looper of subthread:
 ```
 LooperThread* looperThread = new LooperThread("LooperThread", msgPoolSize);
 Looper loop = looperThread->getLooper();	
