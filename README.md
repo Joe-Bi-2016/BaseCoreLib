@@ -1,5 +1,5 @@
 # Base core Libarary
-Support window, linux, macos and android crossplatform base c/c++ feature kit libarary, it contain file operation, ,mutex, condition variable, semaphore, thread pool, circular queue, looper that similar with android and support c++11 and posix standard.spdlog library for log.
+A library of basic C/C++ feature suites that support C++11 and POSIX standards as well as Windows, Linux, macOS, and Android platforms.It contain file operation, mutex, condition variable, semaphore, thread pool, circular queue, looper that similar with android, spdlog library for log.
 
 ## Note:
 If want generate library, should change basecore/CMakeLists.txt's add_executable to target_link_libraries.
@@ -11,7 +11,7 @@ use Cmake-GUI to generate vs project and build it.
 1. enter BaseCore directory, mkdir build
 2. cmake & make
 
-## Example:
+## Example for testing Looper:
 
 ```
 class myMsgHandlerObj : public MsgHandlerObj
@@ -40,7 +40,7 @@ void freeMem(void* obj, size_t bytes){
 }
 
 ```
-###### >1 main thread send message to looper of subthrad:
+###### >1 main thread send message to looper of subthread:
 ```
 LooperThread* looperThread = new LooperThread("LooperThread", msgPoolSize);
 Looper loop = looperThread->getLooper();	
