@@ -72,6 +72,7 @@
 // define memory macro
 #ifdef __cplusplus
     #define newObject(ptr, Class, ...)  ptr = new Class(__VA_ARGS__)
+    #define newLocatingObj(ptr, locatingPtr, Class, ...) ptr = new (locatingPtr) Class(__VA_ARGS__)
     #define newArray(T, n)  ((T*)(new T[n]))
     #define deleteArray(T, ptr)\
      if(ptr)\
