@@ -8,8 +8,10 @@ If want generate library, should change basecore/CMakeLists.txt's add_executable
 use Cmake-GUI to generate vs project and build it.
 
 ## linux/android/macos:
-1. enter BaseCore directory, mkdir build
-2. cmake & make
+mkdir build
+cd build
+cmake ..
+cmake --build .
 
 ## Example for testing Looper:
 
