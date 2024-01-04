@@ -21,23 +21,23 @@
 #include <dirent.h>
 #endif
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
     __CExternBegin__
    
-    //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     bool isDirectory(const char* path)
     {
         int nRet = 0;
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+        #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
         CString str(path);
         str.Replace(_T("/"), _T("\\"));
         struct _stat st = {0};
         nRet = _tstat(str, &st);
-#else
+        #else
         struct stat st;
         nRet = stat(path, &st);
-#endif        
+        #endif        
         if(nRet != 0)
         {
             printf("error: %s doesn't exist\n", path);
@@ -45,30 +45,30 @@ __BEGIN__
         }
         else
         {
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))           
+            #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))           
             if((st.st_mode & _S_IFDIR) == _S_IFDIR)
-#else
+            #else
             if((st.st_mode & S_IFDIR) == S_IFDIR)
-#endif            
+            #endif            
                 return true;
             else    
                 return false;
         }
     }
 
-   //------------------------------------------------------------------------------------//
+   //-----------------------------------------------------------------------//
     bool isFileExist(const char* filePath)
     {
         int nRet = 0;
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+        #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
         CString str(filePath);
         str.Replace(_T("/"), _T("\\"));
         struct _stat st = {0};
         nRet = _tstat(str, &st);
-#else
+        #else
         struct stat st;
         nRet = stat(filePath, &st);
-#endif        
+        #endif        
         if(nRet != 0)
         {
             printf("error: %s doesn't exist\n", filePath);
@@ -76,30 +76,30 @@ __BEGIN__
         }
         else
         {
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))        
+            #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))        
             if((st.st_mode & _S_IFREG) == _S_IFREG)
-#else
+            #else
             if((st.st_mode & S_IFREG) == S_IFREG)
-#endif            
+            #endif            
                 return true;
             else    
                 return false;
         }   
     }
 
-   //------------------------------------------------------------------------------------//
+   //-----------------------------------------------------------------------//
     uint64 getFileBytes(const char* filePath)
     {
         int nRet = 0;
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+        #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
         CString str(filePath);
         str.Replace(_T("/"), _T("\\"));
         struct _stat st = {0};
         nRet = _tstat(str, &st);
-#else
+        #else
         struct stat st;
         nRet = stat(filePath, &st);
-#endif        
+        #endif        
         if(nRet != 0)
         {
             printf("error: %s doesn't exist\n", filePath);
@@ -107,18 +107,18 @@ __BEGIN__
         }
         else
         {
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))            
+            #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))            
             if((st.st_mode & _S_IFREG) == _S_IFREG)
-#else
+            #else
             if((st.st_mode & S_IFREG) == S_IFREG)
-#endif            
+            #endif            
                 return st.st_size;
             else    
                 return 0;
         }  
     }
 
-   //------------------------------------------------------------------------------------//
+   //-----------------------------------------------------------------------//
     uint64 getFileSize(const FILE* file)
     {
         if(file)
@@ -134,7 +134,7 @@ __BEGIN__
         return 0;
     }
 
-   //------------------------------------------------------------------------------------//
+   //-----------------------------------------------------------------------//
     uint64 readFile0(const char* filePath, std::string& buffer)
     {
         if(!filePath)
@@ -158,7 +158,7 @@ __BEGIN__
         return size;
     }
 
-   //------------------------------------------------------------------------------------//
+   //-----------------------------------------------------------------------//
     uint64 readFile1(const File* file, std::string& buffer)
     {
         if(!file)
@@ -175,7 +175,7 @@ __BEGIN__
             return 0;
     }
 
-   //------------------------------------------------------------------------------------//
+   //-----------------------------------------------------------------------//
     void* readFile2(const char* filePath, uint64* size)
     {
         if(!filePath)
@@ -198,7 +198,7 @@ __BEGIN__
         return buf;
     }
 
-   //------------------------------------------------------------------------------------//
+   //-----------------------------------------------------------------------//
     bool saveFile(const char* filePath, const void* data, uint32 size)
     {
         if(!filePath)
@@ -216,7 +216,7 @@ __BEGIN__
         return true;
     }
 
-   //------------------------------------------------------------------------------------//
+   //-----------------------------------------------------------------------//
     bool getAllFiles(const char* dirPath, std::vector<std::string>& files, char* type)
     {
         if (!dirPath)
@@ -224,7 +224,7 @@ __BEGIN__
 
         size_t typeSize = type ? ::strlen(type) : 0;
 
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+        #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
         intptr_t hFile = 0;
         struct _finddata_t fileinfo;
         std::string p;
@@ -242,7 +242,7 @@ __BEGIN__
         }
 
         return false;
-#else
+        #else
         DIR* dp = opendir(dirPath);
         if(dp == nullptr)
         {
@@ -291,10 +291,10 @@ __BEGIN__
         
         closedir(dp);
         return true;
-#endif        
+        #endif        
     }
 
-   //------------------------------------------------------------------------------------//
+   //-----------------------------------------------------------------------//
     void deleteFile(const char* filePath)
     {
         if(filePath)

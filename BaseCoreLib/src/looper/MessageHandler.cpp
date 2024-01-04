@@ -13,16 +13,16 @@
 #include "../../inc/os/AutoMutex.hpp"
 #include "../../inc/os/Logger.h"
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
     
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     #ifdef LOG_TAG
         #undef LOG_TAG
     #endif
     #define LOG_TAG (MessgeHandler):
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     MsgHandler::MsgHandler(void)
     : mLooper(nullptr)
     , mQueue(nullptr)
@@ -36,7 +36,7 @@ __BEGIN__
         mMutex = new Mutex(PTHREAD_MUTEX_RECURSIVE_NP);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     MsgHandler::~MsgHandler(void)
     {
         mCallback = nullptr;
@@ -50,7 +50,7 @@ __BEGIN__
         LOGD("%s", "Handler been destroyed!");
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     Handler MsgHandler::createHandler(void* context/* = nullptr */)
     { 
         Handler h =  Handler(new MsgHandler(), deleter<MsgHandler>());
@@ -60,7 +60,7 @@ __BEGIN__
         return h;
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     Handler MsgHandler::createHandler(const messageCallback& callback, void* context/* = nullptr */)
     { 
         Handler h = createHandler(context);
@@ -68,7 +68,7 @@ __BEGIN__
         return h;
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     Handler MsgHandler::createHandler(const Looper& looper, void* context/* = nullptr */)
     { 
         Handler h = Handler(new MsgHandler(), deleter<MsgHandler>());
@@ -78,7 +78,7 @@ __BEGIN__
         return h;
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     Handler MsgHandler::createHandler(const Looper& looper, const messageCallback& callback, void* context/* = nullptr */)
     {
         Handler h = createHandler(looper, context);
@@ -86,55 +86,55 @@ __BEGIN__
         return h;
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     messageCallback MsgHandler::getCallback(void) const
     {
         return mCallback;
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::post(const runnable& r)
     {
         sendMessageDelayed(Msg::obtain(r, Handler(this, deleter<MsgHandler>())), 0);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::post(const runnable& r, long delayMillis)
     {
         sendMessageDelayed(Msg::obtain(r, Handler(this, deleter<MsgHandler>())), delayMillis);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::sendMessage(Message msg)
     {
         sendMessageDelayed(std::move(msg), 0);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::sendEmptyMessage(int what)
     {
         sendMessageDelayed(Msg::obtain(what, Handler(this, deleter<MsgHandler>())), 0);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::sendEmptyMessage(int what, long delayMillis)
     {
         sendMessageDelayed(Msg::obtain(what, Handler(this, deleter<MsgHandler>())), delayMillis);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::postAtTime(Message msg, long uptimeMillis)
     {
         sendMessageAtTime(std::move(msg), uptimeMillis);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::postAtTime(const runnable& r, long uptimeMillis)
     {
         sendMessageAtTime(Msg::obtain(r, Handler(this, deleter<MsgHandler>())), uptimeMillis);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::sendMessageDelayed(Message msg, long delayMillis)
     {
         // No lock required
@@ -145,112 +145,112 @@ __BEGIN__
         sendMessageAtTime(std::move(msg), t + delayMillis);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::sendMessageAtFrontOfQueue(Message msg)
     {
         sendMessageAtTime(std::move(msg), 0);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::setMsgHandlerFunc(const messageHandlerFunc& fn)
     {
         AutoMutex critical(mMutex);
         mMessageHandlerFn = fn;
     }
 
-    //------------------------------------------------------------------------------------//
+    //------------------------------------------------------------------------//
     void MsgHandler::setMsgHandlerFunc(const MsgHandlerObj& obj)
     {
         AutoMutex critical(mMutex);
         mMsgHandlerObj = const_cast<MsgHandlerObj*>(&obj);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::setMsgCallbackObject(const HandlerCallback* callbackObj)
     {
         AutoMutex critical(mMutex);
         mmsgCallbackObj = const_cast<HandlerCallback*>(callbackObj);
     }
     
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     bool MsgHandler::hasMessage(const Message& msg)
     {
         return mQueue->hasMessage(msg, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     bool MsgHandler::hasMessage(const runnable& r)
     {
         return mQueue->hasMessage(r, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     bool MsgHandler::hasMessage(int what)
     {
         return mQueue->hasMessage(what, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     bool MsgHandler::hasMessage(const HandlerCallback* callback)
     {
         return mQueue->hasMessage(callback, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::removeMessage(runnable& r)
     {
         mQueue->removeMessage(r, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::removeMessage(int what)
     {
         mQueue->removeMessage(what, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::removeMessage(int minWhat, int maxWhat, messageCallback& c)
     {
         mQueue->removeMessage(minWhat, maxWhat, c, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::removeMessage(int what, int arg1, int arg2, messageCallback& c)
     {
         mQueue->removeMessage(what, arg1, arg2, c, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::removeMessage(HandlerCallback* callback)
     {
         mQueue->removeMessage(callback, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::removeMessage(int what, HandlerCallback *callback)
     {
         mQueue->removeMessage(what, callback, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::removeMessage(int minWhat, int maxWhat, HandlerCallback* callback)
     {
         mQueue->removeMessage(minWhat, maxWhat, callback, this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::removeMessage(int what, int arg1, int arg2, HandlerCallback* callback)
     {
         mQueue->removeMessage(what, arg1, arg2, callback, this);        
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::removeAllMessages(void)
     {
         mQueue->removeAllMessages(this);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::dispatchMessage(const Message& msg)
     {
         if(msg == nullptr)
@@ -279,7 +279,7 @@ __BEGIN__
         }    
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgHandler::sendMessageAtTime(Message msg, uint64 uptimeMillis)
     {
         msg->mTarget = this;

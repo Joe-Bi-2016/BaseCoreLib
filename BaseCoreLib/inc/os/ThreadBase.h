@@ -23,17 +23,17 @@
 #include <errno.h>
 #include <string>
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
 
-    //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
         typedef std::thread NativeThreadHandle;
     #else
         typedef pthread_t NativeThreadHandle;
     #endif
 
-    //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     typedef void(*threadFunc)(void*);
     typedef std::function<void (void*)> threadFuncObj;
 
@@ -59,13 +59,13 @@ __BEGIN__
 
     private:
         NativeThreadHandle  mHandle; 
-        std::string                    mName; 
-        bool                            mIsJoined;
-        bool                            mIsAttached;
-        threadFuncObj            mThreadFunc;
+        std::string         mName; 
+        bool                mIsJoined;
+        bool                mIsAttached;
+        threadFuncObj       mThreadFunc;
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
-        std::promise<void*>  mProm;
-        std::future<void*>      mFut;
+        std::promise<void*> mProm;
+        std::future<void*>  mFut;
 #endif
     };
 

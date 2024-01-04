@@ -16,16 +16,16 @@
 #include <pthread.h>
 #endif
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     typedef enum
     {
-        PTHREAD_MUTEX_TIMED_NP              = 0, // defalut
-        PTHREAD_MUTEX_ADAPTIVE_NP        = 1, // normal
-        PTHREAD_MUTEX_RECURSIVE_NP      = 2, // recursive
-        PTHREAD_MUTEX_ERRORCHECK_NP  = 3, // error check
+        PTHREAD_MUTEX_TIMED_NP      = 0, // defalut
+        PTHREAD_MUTEX_ADAPTIVE_NP   = 1, // normal
+        PTHREAD_MUTEX_RECURSIVE_NP  = 2, // recursive
+        PTHREAD_MUTEX_ERRORCHECK_NP = 3, // error check
     }MutexType;
 
     class API_EXPORTS Mutex : private Uncopyable
@@ -141,11 +141,11 @@ __BEGIN__
 
         private: 
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
-            void*                       mMutex;
+            void*           mMutex;
 #else
-            pthread_mutex_t     mMutex;
+            pthread_mutex_t mMutex;
 #endif           
-            MutexType              mMutexType;
+            MutexType       mMutexType;
     };
 
     template <class MyMutex>

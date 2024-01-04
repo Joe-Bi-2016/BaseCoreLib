@@ -17,10 +17,10 @@
 #include <chrono>
 #endif
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
     
-   //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     class LooperThread 
     {
         public:
@@ -46,19 +46,19 @@ __BEGIN__
             bool isRunning(void);
 
         private:
-            bool                          mLooperInCurrThread;
-            ThreadBase*             mLooperThr;
-            std::string                  mThreadName;
-            Mutex                       mMutex;
+            bool                mLooperInCurrThread;
+            ThreadBase*         mLooperThr;
+            std::string         mThreadName;
+            Mutex               mMutex;
 #if (defined(__linux__) || defined(__APPLE__))
-            Semaphore               mSem;
-            volatile bool             mIsRunning;
+            Semaphore           mSem;
+            volatile bool       mIsRunning;
 #else
-            std::promise<bool> mIsRunning;
+            std::promise<bool>  mIsRunning;
 #endif
-            Looper                      mLooper;
-            int                             mMsgPoolSize;
-            bool                          mLooperExited;
+            Looper              mLooper;
+            int                 mMsgPoolSize;
+            bool                mLooperExited;
 
             friend static void threadlooper_entry(void* param);
         };

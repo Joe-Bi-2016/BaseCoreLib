@@ -26,16 +26,16 @@
 #include <pthread.h>
 #endif
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     #ifdef LOG_TAG
         #undef LOG_TAG
     #endif
     #define LOG_TAG (MessageLooper):
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     static uint64 getCurrentThreadId(void)
     {
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
@@ -53,11 +53,11 @@ __BEGIN__
 #endif
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     threadlocal Looper MsgLooper::mThreadLocal(nullptr);
     Mutex MsgLooper::mMutex(PTHREAD_MUTEX_RECURSIVE_NP);
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     MsgLooper::MsgLooper(const char* msgQueueName, int msgQueuePoolMaxSize, uint64 tid)
     : mQueue(0)
     , mThreadId(0)
@@ -69,7 +69,7 @@ __BEGIN__
         LOGD("Message queue name = %s, ThreadId = %llu", msgQueueName, mThreadId);
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     MsgLooper::~MsgLooper(void)
     {
         quit();
@@ -79,7 +79,7 @@ __BEGIN__
         LOGD("%s", "Looper been destroyed!");
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     Looper MsgLooper::prepare(int msgQueuePoolMaxSize /* = 50 */)
     {
         AutoMutex lock(&mMutex);
@@ -95,7 +95,7 @@ __BEGIN__
         return mThreadLocal;
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     Looper MsgLooper::myLooper(void)
     {
         AutoMutex lock(&mMutex);
@@ -109,7 +109,7 @@ __BEGIN__
         return mThreadLocal;
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
    // Note: operate message queues don't need to be mutually exclusive 
    // because operations on it are all secure, each step is akin to an atomic operation. 
    // Isn't the purpose of mutex to ensure the integrity of access to the same 
@@ -172,7 +172,7 @@ __BEGIN__
         }
     }
 
-   //------------------------------------------------------------------------------------//
+   //------------------------------------------------------------------------//
     void MsgLooper::quit(bool safely /*= false */)
     {
         // don't need mutex, because setting boolean type of mExit and 

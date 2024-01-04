@@ -13,10 +13,10 @@
 #include <memory>
 #include <typeinfo>
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
   
-    //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     #ifndef make_unique
     template<typename T, typename ...Args>
     std::unique_ptr<T> make_unique(Args&& ...args)
@@ -25,16 +25,16 @@ __BEGIN__
     }
     #endif
 
-    //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     class Msg;
     class MsgHandler;
     class MsgLooper;
     class MsgQueue;
 
-    typedef std::unique_ptr<Msg, deleter<Msg>>    Message;
-    typedef std::shared_ptr<MsgHandler>                 Handler;
-    typedef std::shared_ptr<MsgQueue>                   Queue;
-    typedef std::shared_ptr<MsgLooper>                  Looper;
+    typedef std::unique_ptr<Msg, deleter<Msg>>  Message;
+    typedef std::shared_ptr<MsgHandler>         Handler;
+    typedef std::shared_ptr<MsgQueue>           Queue;
+    typedef std::shared_ptr<MsgLooper>          Looper;
 
     typedef void (*messageCallback)(const Message& msg, void* context);
     typedef void (*paramDeleter)(void* obj, size_t bytes);
@@ -42,7 +42,7 @@ __BEGIN__
     typedef messageCallback runnable;
     typedef messageCallback msgQueueIdleHandler;
 
-    //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     class HandlerCallback
     {
         public:
@@ -51,7 +51,7 @@ __BEGIN__
             virtual void onHandler(const Message& msg) = 0;
     };
 
-    //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     // Note: message is not thread safety. I assume you don't using same message
     // in multithreads
     class API_EXPORTS Msg : private Uncopyable
@@ -100,23 +100,23 @@ __BEGIN__
             ~Msg(void);
 
         public:
-            int                           mWhat;
-            int                           mArg1;
-            int                           mArg2;
-            runnable                 mCallback;
-            HandlerCallback*   mHandleCallback;
+            int                 mWhat;
+            int                 mArg1;
+            int                 mArg2;
+            runnable            mCallback;
+            HandlerCallback*    mHandleCallback;
             MsgHandler*         mTarget;
-            uint64                     mWhen;
-            int                           mFlags;
-            Message                 mNext;
+            uint64              mWhen;
+            int                 mFlags;
+            Message             mNext;
             
         private:
-            static int                  FLAGINUSE;
-            static int                  FLAGASYNC;
-            // The 3 paramete  r are private, which purpose is avoiding forgetting to set  
-            void*                      mParam;
-            size_t                      mParamBytes;
-            paramDeleter         mParamFreeFunc;
+            static int          FLAGINUSE;
+            static int          FLAGASYNC;
+            // The 3 paramete are private, which purpose is avoiding forgetting to set  
+            void*               mParam;
+            size_t              mParamBytes;
+            paramDeleter        mParamFreeFunc;
     };
 
 __END__

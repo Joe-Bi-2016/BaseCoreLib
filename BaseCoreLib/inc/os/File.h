@@ -15,61 +15,48 @@
 #include <string>
 #include <memory>
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
 
-   //------------------------------------------------------------------------------------//
-        class API_EXPORTS File
-        {
-        public:
-            explicit File(void);
-            explicit File(const FILE* file);
-
-            explicit File(const File& file);
-            explicit File(File && file);
-            explicit File(const std::string& path, const std::string& mode = "rw");
-
-            File& operator=(File&& file);
-            File& operator=(const File& file);
-
-            virtual ~File(void);
-
-        #if defined(__ANDROID__)
-            void setAssetManager(const void* assetManager);
-        #endif
-        
-            virtual bool fopen(const std::string& path, const std::string& mode = "rw");
-            virtual void fclose(void);
-
-            virtual size_t fread(void* buffer, long size, long count);
-            virtual size_t fwrite(const void* buffer, long size, long count);
-
-            virtual char* fgets(char* buffer, int bufferSize);
-
-            virtual void fprintf(const char* format, ...);
-
-            virtual void syncfile(void);
-
-            virtual long size(void);
-
-            virtual bool eof(void);
-            virtual void resetRead(void);
-            virtual void resetWrite(void);
-            virtual std::string& getPath(void);
-
-            bool getOneLine(char** buf, size_t* len);
-
-        private:
-            void release(void);
-
-        protected:
-            std::string    mPath;
-            std::string    mMode;
-            void*           mFile;
-            bool            mNeedClosed;
-            long            mReadPos;
-            long            mWritePos;
-            void*           mAssetManager;
+    //-----------------------------------------------------------------------//
+    class API_EXPORTS File
+    {
+    public:
+        explicit File(void);
+        explicit File(const FILE* file);
+        explicit File(const File& file);
+        explicit File(File && file);
+        explicit File(const std::string& path, const std::string& mode = "rw");
+        File& operator=(File&& file);
+        File& operator=(const File& file);
+        virtual ~File(void);
+    #if defined(__ANDROID__)
+        void setAssetManager(const void* assetManager);
+    #endif
+    
+        virtual bool fopen(const std::string& path, const std::string& mode = "rw");
+        virtual void fclose(void);
+        virtual size_t fread(void* buffer, long size, long count);
+        virtual size_t fwrite(const void* buffer, long size, long count);
+        virtual char* fgets(char* buffer, int bufferSize);
+        virtual void fprintf(const char* format, ...);
+        virtual void syncfile(void);
+        virtual long size(void);
+        virtual bool eof(void);
+        virtual void resetRead(void);
+        virtual void resetWrite(void);
+        virtual std::string& getPath(void);
+        bool getOneLine(char** buf, size_t* len);
+    private:
+        void release(void);
+    protected:
+        std::string mPath;
+        std::string mMode;
+        void*       mFile;
+        bool        mNeedClosed;
+        long        mReadPos;
+        long        mWritePos;
+        void*       mAssetManager;
     };
 
     class API_EXPORTS FileUtil

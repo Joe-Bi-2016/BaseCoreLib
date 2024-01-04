@@ -11,10 +11,10 @@
 #include "Message.h"
 #include "../os/Mutex.hpp"
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
     
-    //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     class API_EXPORTS MsgHandlerObj
     {
         public:
@@ -23,7 +23,7 @@ __BEGIN__
             virtual void operator()(const Message& msg, void* context) = 0;
     };
 
-   //------------------------------------------------------------------------------------//
+    //----------------------------------------------------------------------//
     class API_EXPORTS MsgHandler : private Uncopyable
     {
         friend struct deleter<MsgHandler>;
@@ -99,14 +99,14 @@ __BEGIN__
             void sendMessageAtTime(Message msg, uint64 uptimeMillis);
 
         private:
-            Looper                          mLooper;
-            Queue                           mQueue;
-            messageCallback          mCallback;          // defalut message handler function
-            messageHandlerFunc   mMessageHandlerFn;  // user messge handler function
-            MsgHandlerObj*           mMsgHandlerObj; // user message handler object
-            HandlerCallback*          mmsgCallbackObj;
-            void*                             mContext;
-            mutable Mutex*           mMutex;
+            Looper              mLooper;
+            Queue               mQueue;
+            messageCallback     mCallback;          // defalut message handler function
+            messageHandlerFunc  mMessageHandlerFn;  // user messge handler function
+            MsgHandlerObj*      mMsgHandlerObj; // user message handler object
+            HandlerCallback*    mmsgCallbackObj;
+            void*               mContext;
+            mutable Mutex*      mMutex;
     };
 
 __END__

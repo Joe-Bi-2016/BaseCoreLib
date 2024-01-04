@@ -26,16 +26,16 @@
 #include <semaphore.h>
 #endif
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
 
-    //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     #ifdef LOG_TAG
         #undef LOG_TAG
     #endif
     #define LOG_TAG (Semaphore):
 
-   //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     class API_EXPORTS Semaphore : private Uncopyable
     {
         public:
@@ -211,13 +211,13 @@ __BEGIN__
 
         private: 
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
-            HANDLE                          mSemaphore;
+            HANDLE                  mSemaphore;
 #elif (defined(__APPLE__))
             dispatch_semaphore_t    mSemaphore;
 #else
-            sem_t                               mSemaphore;
+            sem_t                   mSemaphore;
 #endif
-            int                                     mCount;
+            int                     mCount;
     };
 
 __END__

@@ -13,10 +13,10 @@
 #include <memory>
 #include <thread>
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
     
-    //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     class API_EXPORTS MsgLooper : private Uncopyable
     {
         friend struct deleter<MsgLooper>;
@@ -47,11 +47,11 @@ __BEGIN__
             
         private:
             threadlocal static Looper mThreadLocal;
-            Queue                               mQueue;
-            volatile uint64                   mThreadId;
-            static Mutex                      mMutex;
-            volatile bool                     mExit;
-            bool                                  mPromoteThrLevel;
+            Queue                     mQueue;
+            volatile uint64           mThreadId;
+            static Mutex              mMutex;
+            volatile bool             mExit;
+            bool                      mPromoteThrLevel;
     };
 
 __END__

@@ -22,10 +22,10 @@
 #include <sys/time.h>
 #endif
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
 
-   //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     class API_EXPORTS Condition : private Uncopyable
     {
         public:
@@ -217,10 +217,10 @@ __BEGIN__
             }
 
         private: 
-            bool                               mIsSelfMutex;
-            Mutex*                           mMutex;
+            bool                        mIsSelfMutex;
+            Mutex*                      mMutex;
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
-            std::condition_variable* mCond;
+            std::condition_variable*    mCond;
 #else
             pthread_cond_t              mCond;
 #endif           

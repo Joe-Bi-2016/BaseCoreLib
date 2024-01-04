@@ -12,10 +12,10 @@
 #include <functional>
 #include <condition_variable>
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
 
-   //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     template<typename ...Args>
     class API_EXPORTS syncondLock : private Uncopyable
     {
@@ -66,8 +66,8 @@ __BEGIN__
 
         private:
             Condition*  mMyCond;
-            bool            mEnable;
-            bool            mSelfCondVal;
+            bool        mEnable;
+            bool        mSelfCondVal;
     };
 
 __END__

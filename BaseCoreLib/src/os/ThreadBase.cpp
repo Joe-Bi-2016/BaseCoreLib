@@ -16,16 +16,16 @@
 #include <sys/syscall.h>
 #endif
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
 
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     #ifdef LOG_TAG
         #undef LOG_TAG
     #endif
     #define LOG_TAG (Thread):
 
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     class threaddata
     {
     private:
@@ -61,7 +61,7 @@ __BEGIN__
             LOGI("%s\n", "------------- RUNNING User-thread function -------------");
             this->unlock();
             this->mFunc(this->mArg);
-            LOGI("%s\n", "--------------- User-thread function  END  ----------------");
+            LOGI("%s\n", "--------------- User-thread function  END  -------------");
         }
     
         void lock()
@@ -82,8 +82,8 @@ __BEGIN__
         }
     };
     
-    //---------------------------------------------------------------------------------------//
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+    //-----------------------------------------------------------------------//
+    #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
     static unsigned int startThread(std::future<void*>& arg)
     {
         threaddata* data = (threaddata*)arg.get();
@@ -100,7 +100,7 @@ __BEGIN__
 
         return 0;
     }
-#else
+    #else
     static void* startThread(void *arg)
     {
         threaddata* data = static_cast<threaddata*>(arg);
@@ -118,39 +118,39 @@ __BEGIN__
 
         return nullptr;
     }
-#endif
+    #endif
 
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     ThreadBase::ThreadBase(threadFunc func, const std::string &name /*= "default"*/)
         : mName(name)
-#if (defined(__linux__) || defined(__APPLE__) || defined(TARGET_OS_IPHONE) || defined(__ANDROID__))
+    #if (defined(__linux__) || defined(__APPLE__) || defined(TARGET_OS_IPHONE) || defined(__ANDROID__))
         , mHandle(0)
-#endif
+    #endif
         , mIsJoined(false)
         , mIsAttached(true)
         , mThreadFunc(func)
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+    #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
         , mFut(mProm.get_future())
-#endif
+    #endif
     {
     }
 
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     ThreadBase::ThreadBase(threadFuncObj func, const std::string& name /*= "default"*/)
         : mName(name)
-#if (defined(__linux__) || defined(__APPLE__) || defined(TARGET_OS_IPHONE) || defined(__ANDROID__))
+    #if (defined(__linux__) || defined(__APPLE__) || defined(TARGET_OS_IPHONE) || defined(__ANDROID__))
         , mHandle(0)
-#endif
+    #endif
         , mIsJoined(false)
         , mIsAttached(true)
         , mThreadFunc(std::move(func))
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+    #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
         , mFut(mProm.get_future())
-#endif
+    #endif
     {
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     ThreadBase::~ThreadBase()
     {
         mName = "";
@@ -159,29 +159,29 @@ __BEGIN__
         mThreadFunc = nullptr;
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     bool ThreadBase::joinable() const
     {
-#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+    #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
         return mHandle.joinable();
-#else
+    #else
         return mIsJoined && !mIsAttached;
-#endif
+    #endif
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     std::string & ThreadBase::getName()
     {
         return mName;
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     NativeThreadHandle ThreadBase::getNativeThreadHandle()
     {
         return std::move(mHandle);
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
     bool ThreadBase::start(void *arg /*= nullptr*/, bool syn /*= false*/, bool enJoined /*= true*/)
     {
@@ -199,7 +199,7 @@ __BEGIN__
         return true;
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     void ThreadBase::join()
     {
         if (joinable())
@@ -209,7 +209,7 @@ __BEGIN__
         }
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     void ThreadBase::detach()
     {
         if (!mIsJoined && mIsAttached)
@@ -219,7 +219,7 @@ __BEGIN__
         }
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     uint64 ThreadBase::getThreadId()
     {
         std::stringstream ss;
@@ -227,7 +227,7 @@ __BEGIN__
         return std::stoi(ss.str());
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     #elif (defined(__linux__) || defined(__APPLE__) || defined(TARGET_OS_IPHONE) || defined(__ANDROID__))
     bool ThreadBase::start(void *arg /*= nullptr*/, bool syn /*= false*/, bool enJoined /*= true*/)
     {
@@ -257,7 +257,7 @@ __BEGIN__
         return ret;
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     void ThreadBase::join()
     {
         if (joinable())
@@ -268,7 +268,7 @@ __BEGIN__
         }
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     void ThreadBase::detach()
     {
         if (!mIsJoined && mIsAttached && mHandle)
@@ -279,7 +279,7 @@ __BEGIN__
         }
     }
     
-    //---------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     uint64 ThreadBase::getThreadId()
     {
         return (uint64)mHandle;

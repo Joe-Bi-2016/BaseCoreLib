@@ -12,7 +12,7 @@
 #include "../../thirdparty/spdlog-1.x/include/spdlog/sinks/stdout_color_sinks.h"
 #include <assert.h>
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
     __CExternBegin__
 
@@ -20,8 +20,9 @@ __BEGIN__
     static bool inited = false;
     static Mutex lock;
     
-    //------------------------------------------------------------------------------------//
-    void initLogger(void) {
+    //-----------------------------------------------------------------------//
+    void initLogger(void) 
+    {
         AutoMutex am(&lock);
         if (inited)
             return;
@@ -30,8 +31,9 @@ __BEGIN__
         console_logger->set_level(spdlog::level::trace);
     }
     
-    //------------------------------------------------------------------------------------//
-    void logPrint(LogPriority prio, const char* tag, const char* fmt, ...) {
+    //-----------------------------------------------------------------------//
+    void logPrint(LogPriority prio, const char* tag, const char* fmt, ...)
+    {
         assert(prio >= LOG_LEVEL_NONE && prio <= LOG_LEVEL_DEBUG);
         assert(tag && fmt);
     

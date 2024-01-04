@@ -23,10 +23,10 @@
 #include <semaphore.h>
 #endif
 
-//---------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 __BEGIN__
 
-   //------------------------------------------------------------------------------------//
+    //-----------------------------------------------------------------------//
     class API_EXPORTS MsgQueue : private Uncopyable
     {
         friend class MsgLooper;
@@ -99,21 +99,21 @@ __BEGIN__
             void setTestOutTimeMillisExit(long t);
 
         private:
-            std::string                                  mName;
-            Message                                   mMsgQueue;
-            int                                             mMsgQueueSize;
-            mutable Mutex                         mLock;
-            Condition                                  mWait;
-            Message                                   mMsgPool;
-            int                                             mMsgPoolSize;
-            int                                             mMsgPoolMaxSize;
-            bool                                          mMsgPoolIsFull;
-            Mutex                                       mMsgPoolMutex;
-            msgQueueIdleHandler             mIdleHandlerFunc;
-            bool                                          mBlocked;
-            bool                                          mQuit;
-            bool                                          mNotEnqueMsg;
-            long                                          mOutTimeTest;
+            std::string         mName;
+            Message             mMsgQueue;
+            int                 mMsgQueueSize;
+            mutable Mutex       mLock;
+            Condition           mWait;
+            Message             mMsgPool;
+            int                 mMsgPoolSize;
+            int                 mMsgPoolMaxSize;
+            bool                mMsgPoolIsFull;
+            Mutex               mMsgPoolMutex;
+            msgQueueIdleHandler mIdleHandlerFunc;
+            bool                mBlocked;
+            bool                mQuit;
+            bool                mNotEnqueMsg;
+            long                mOutTimeTest;
     };
 
 

@@ -10,7 +10,7 @@
 #define __Macro_h__
 #include <stdio.h>
 
-//--------------------------------------------------------------------------------------//
+//---------------------------------------------------------------------------//
 #ifdef __cplusplus
     #define MyNameSpace_Begin(name) namespace name{
     #define MyNameSpace_end }
@@ -60,11 +60,11 @@
 #endif
 
 //define Usage patterns
-#define NameSpace_RootName         Root  /*main name space*/
+#define NameSpace_RootName      Root  /*main name space*/
 #define NameSpace_ModuleName    Core
 
 #define __BEGIN__      MyNameSpace_Multi_Begin(NameSpace_RootName, NameSpace_ModuleName)
-#define __END__         MyNameSpace_Multi_End
+#define __END__        MyNameSpace_Multi_End
 
 // define string
 #define STR(x)  #x
@@ -92,21 +92,21 @@
 
 // define type
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
-    typedef __int64                     int64;
-    typedef unsigned __int64     uint64;
-    typedef unsigned int            uint32;
+    typedef __int64             int64;
+    typedef unsigned __int64    uint64;
+    typedef unsigned int        uint32;
 #else
-    typedef int64_t                     int64;
-    typedef uint64_t                   uint64;
-    typedef uint32_t                   uint32;
+    typedef int64_t             int64;
+    typedef uint64_t            uint64;
+    typedef uint32_t            uint32;
 #endif
 
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
-    #define SNPRINTF         _snprintf_s
-    #define threadlocal       thread_local
+    #define SNPRINTF            _snprintf_s
+    #define threadlocal         thread_local
 #else
-    #define SNPRINTF         snprintf
-    #define threadlocal       __thread
+    #define SNPRINTF            snprintf
+    #define threadlocal         __thread
 #endif
 
 __BEGIN__
