@@ -51,7 +51,7 @@ void freeMem(void* obj, size_t bytes)
 /////////////////////////////////////////////////////////////////////////////////////////////////
 int main(void)
 {	
-	int exitWhat, exitModel, sleepMilliseconds = -1, msgPoolSize = 50;
+	int exitWhat, exitModel, sleepMicroseconds = -1, msgPoolSize = 50;
 	LOGI("%s", "**************************************************************");
 	LOGI("%s", "* Start test main thread send message to looper of subthrad *");
 	LOGI("%s", "**************************************************************");
@@ -59,11 +59,11 @@ int main(void)
 	cin >> exitWhat;
 	LOGI("[mainThread]-%s", "Enter quit model that you want test(0: general quit 1: safy quit):->");
 	cin >> exitModel;
-	LOGI("[mainThread]-%s", "Enter the interval between message sending(millisecond >= 0):->");
-	while (sleepMilliseconds < 0)
+	LOGI("[mainThread]-%s", "Enter the interval between message sending(microseconds >= 0):->");
+	while (sleepMicroseconds < 0)
 	{
-		cin >> sleepMilliseconds;
-		if(sleepMilliseconds < 0)
+		cin >> sleepMicroseconds;
+		if(sleepMicroseconds < 0)
 			LOGI("[mainThread]-%s", "Please enter an integer greater than or equal to 0 :->");
 	}
 	LOGI("[mainThread]-%s", "Enter the messge pool size:->");
@@ -96,9 +96,9 @@ int main(void)
 		h->sendMessage(std::move(msg));
 
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
-		Sleep(sleepMilliseconds);
+		std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroseconds));
 #else
-		usleep((sleepMilliseconds / 1000));
+		usleep(sleepMicroseconds);
 #endif
 		i++;
 	}
@@ -120,12 +120,12 @@ int main(void)
 	std::cin >> exitWhat;
 	LOGI("[SubThread]-%s", "Enter quit model that you want test(0: general quit 1: safy quit):->");
 	cin >> exitModel;
-	LOGI("[SubThread]-%s", "Enter the interval between message sending(millisecond >= 0):->");
-	sleepMilliseconds = -1;
-	while (sleepMilliseconds < 0)
+	LOGI("[SubThread]-%s", "Enter the interval between message sending(microseconds >= 0):->");
+	sleepMicroseconds = -1;
+	while (sleepMicroseconds < 0)
 	{
-		cin >> sleepMilliseconds;
-		if (sleepMilliseconds < 0)
+		cin >> sleepMicroseconds;
+		if (sleepMicroseconds < 0)
 			LOGI("[SubThread]-%s", "Please enter an integer greater than or equal to 0 : ->");
 	}
 	LOGI("[SubThread]-%s", "Enter the messge pool size:->");
@@ -157,9 +157,9 @@ int main(void)
 			mainH->sendMessage(std::move(msg));
 
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
-			Sleep(sleepMilliseconds);
+			std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroseconds));
 #else
-			usleep((sleepMilliseconds / 1000));
+			usleep(sleepMicroseconds);
 #endif
 			i++;
 		}
