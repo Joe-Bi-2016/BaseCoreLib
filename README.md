@@ -89,7 +89,7 @@ Looper mainLoop = MsgLooper::prepare(msgPoolSize);
 Handler mainH = MsgHandler::createHandler(mainLoop);
 myMsgHandlerObj msgHandlerObj;
 mainH->setMsgHandlerFunc(msgHandlerObj);
-std::thread th([=](void) {
+std::thread th([&](void) {
 	const char* ptr = "test subthread send message ";
 	
 	int i = 0;
