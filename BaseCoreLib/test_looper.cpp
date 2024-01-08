@@ -90,7 +90,7 @@ int main(void)
 		memset(strparam, 0x0, sizeof(char) * 100);
 		snprintf(strparam, 100, "%s%d", ptr, i);
 
-		Message msg = std::move(Msg::obtain(i, h));
+		Message msg = Msg::obtain(i, h);
 		msg->setParam(strparam, strlen(strparam) + 1, freeMem);
 
 		h->sendMessage(std::move(msg));
@@ -151,7 +151,7 @@ int main(void)
 			memset(strparam, 0x0, sizeof(char) * 100);
 			snprintf(strparam, 100, "%s%d", ptr, i);
 
-			Message msg = std::move(Msg::obtain(i, mainH));
+			Message msg = Msg::obtain(i, mainH);
 			msg->setParam(strparam, strlen(strparam) + 1, freeMem);
 
 			mainH->sendMessage(std::move(msg));
