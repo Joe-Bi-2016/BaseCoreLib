@@ -8,7 +8,7 @@
 ******************************************************************************/
 #ifndef __TimerTask_h__
 #define __TimerTask_h__
-#include "Macro.h"
+#include "../base/Macro.h"
 #include "../looper/MessageHandler.h"
 
 //---------------------------------------------------------------------------//

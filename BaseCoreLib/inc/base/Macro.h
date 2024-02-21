@@ -40,7 +40,7 @@
         #ifdef __GNUC__
             #define API_EXPORTS __attribute__ ((dllimport))
         #else
-            #if defined(DEBUG)
+            #if defined(EXPORT)
                 #define API_EXPORTS
             #elif defined(RELEASE)
                 #define API_EXPORTS __declspec(dllexport)
