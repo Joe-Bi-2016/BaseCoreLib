@@ -21,7 +21,7 @@ message("CMAKE_HOST_WIN32: ${CMAKE_HOST_WIN32}")
 # ---------------------------------------------------------------------------------------
 # Set project name and director
 # ---------------------------------------------------------------------------------------
-set(PROJECT_NAME Looper)
+set(PROJECT_NAME BaseCore)
 project(${PROJECT_NAME})
 
 set(project_Dir ${CMAKE_CURRENT_SOURCE_DIR})
@@ -164,7 +164,7 @@ target_link_libraries(${PROJECT_NAME} PRIVATE spdlog::spdlog $<$<BOOL:${MINGW}>:
 
 # ---------------------------------------------------------------------------------------
 if (CMAKE_VERSION VERSION_GREATER 3.12)
-  set_property(TARGET Looper PROPERTY CXX_STANDARD 20)
+  set_property(TARGET ${PROJECT_NAME} PROPERTY CXX_STANDARD 20)
 endif()
 
 
