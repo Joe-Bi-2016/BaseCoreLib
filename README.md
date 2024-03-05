@@ -85,7 +85,8 @@ looperThread = nullptr;
 ```
 ###### >2 subthread send message to looper of main
 ```
-Looper mainLoop = MsgLooper::prepare(msgPoolSize);
+looperThread = new LooperThread("MainLooperThread", msgPoolSize, true);
+Looper mainLoop = looperThread->getLooper();
 Handler mainH = MsgHandler::createHandler(mainLoop);
 myMsgHandlerObj msgHandlerObj;
 mainH->setMsgHandlerFunc(msgHandlerObj);
@@ -125,4 +126,7 @@ mainLoop->loop();
 
 mainLoop->getMsgQueue()->dumpQueueList();
 mainLoop->getMsgQueue()->dumpQueuePool();
+
+delete looperThread;
+looperThread = nullptr;
 ```

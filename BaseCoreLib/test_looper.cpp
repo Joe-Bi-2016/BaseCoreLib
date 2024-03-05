@@ -69,7 +69,7 @@ int main(void)
 	LOGI("[mainThread]-%s", "Enter the messge pool size:->");
 	cin >> msgPoolSize;
 
-	LooperThread* looperThread = new LooperThread("LooperThread", msgPoolSize);
+	LooperThread* looperThread = new LooperThread("SubLooperThread", msgPoolSize);
 	Looper loop = looperThread->getLooper();	
 
 	Handler h = MsgHandler::createHandler(loop);
@@ -131,7 +131,8 @@ int main(void)
 	LOGI("[SubThread]-%s", "Enter the messge pool size:->");
 	cin >> msgPoolSize;
 
-	Looper mainLoop = MsgLooper::prepare(msgPoolSize);
+	looperThread = new LooperThread("MainLooperThread", msgPoolSize, true);
+	Looper mainLoop = looperThread->getLooper();
 	Handler mainH = MsgHandler::createHandler(mainLoop);
 	myMsgHandlerObj msgHandlerObj;
 	mainH->setMsgHandlerFunc(msgHandlerObj);
@@ -170,6 +171,9 @@ int main(void)
 
 	mainLoop->getMsgQueue()->dumpQueueList();
 	mainLoop->getMsgQueue()->dumpQueuePool();
+
+	delete looperThread;
+	looperThread = nullptr;
 
 	LOGI("mainLoop shared cnt = %ld", mainLoop.use_count());
 
