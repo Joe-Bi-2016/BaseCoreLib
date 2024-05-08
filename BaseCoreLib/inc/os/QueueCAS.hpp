@@ -30,8 +30,8 @@ private:
     }Node;
     
 private:
-    Node* head;    //头结点
-    Node* tail;    //尾节点
+    Node* head;
+    Node* tail;
 };
 
 template<typename ElemType>
