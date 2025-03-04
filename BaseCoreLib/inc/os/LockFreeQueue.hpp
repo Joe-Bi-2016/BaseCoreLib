@@ -1,21 +1,21 @@
 /*****************************************************************************
-* FileName    : LockFreeQueue.hpp
-* Description : Lock free queues definition, implemented in c++11
+* FileName    : QueueCAS.h
+* Description : Free-lock queues definition, implemented in c++11
 * Author      : Joe.Bi
 * Date        : 2024-04
 * Version     : v1.0
 * Copyright (c)  xxx . All rights reserved.
 ******************************************************************************/
-#ifndef __LockFreeQueue_h__
-#define __LockFreeQueue_h__
+#ifndef __QueueCAS_h__
+#define __QueueCAS_h__
 #include <atomic>
 #include <iostream>
 
 template<typename ElemType>
-class LockFreeQueue {
+class QueueCAS {
 public:
-    LockFreeQueue(void);
-    ~LockFreeQueue(void);
+    QueueCAS(void);
+    ~QueueCAS(void);
 
     void push(ElemType elem);
     ElemType pop(void);
@@ -35,12 +35,12 @@ private:
 };
 
 template<typename ElemType>
-LockFreeQueue<ElemType>::LockFreeQueue(void) {
+QueueCAS<ElemType>::QueueCAS(void) {
     head = tail = new Node();
 }
 
 template<typename ElemType>
-LockFreeQueue<ElemType>::~LockFreeQueue(void) {
+QueueCAS<ElemType>::~QueueCAS(void) {
     while (head != nullptr)
     {
         Node* tempNode = head;
@@ -50,7 +50,7 @@ LockFreeQueue<ElemType>::~LockFreeQueue(void) {
 }
 
 template<typename ElemType>
-void LockFreeQueue<ElemType>::push(ElemType elem) {
+void QueueCAS<ElemType>::push(ElemType elem) {
     Node* newNode = new Node(elem);
     Node* oldtail;
     Node* next;
@@ -71,7 +71,7 @@ void LockFreeQueue<ElemType>::push(ElemType elem) {
 }
 
 template<typename ElemType>
-ElemType LockFreeQueue<ElemType>::pop(void) {
+ElemType QueueCAS<ElemType>::pop(void) {
     Node* oldHead;
     Node* next;
     do {
@@ -94,7 +94,7 @@ ElemType LockFreeQueue<ElemType>::pop(void) {
 }
 
 template<typename ElemType>
-void LockFreeQueue<ElemType>::dump(void) {
+void QueueCAS<ElemType>::dump(void) {
     Node* tempNode = head->next;
 
     if (tempNode == nullptr) {
@@ -110,4 +110,4 @@ void LockFreeQueue<ElemType>::dump(void) {
     std::cout << std::endl;
 }
 
-#endif // __LockFreeQueue_h__
+#endif // __QueueCAS_h__
