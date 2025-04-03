@@ -713,10 +713,10 @@ __BEGIN__
             if(nextPollMsgTimeoutMillis == -1)
             {
                 while (mBlocked)
-                    mWait.wait(&mLock, nextPollMsgTimeoutMillis);
-
+					mWait.wait(&mLock, nextPollMsgTimeoutMillis);
+					
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
-                mLock.lock();
+				mLock.lock();
 #endif
             }
             else
