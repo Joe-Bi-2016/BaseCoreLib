@@ -83,6 +83,7 @@ loop->getMsgQueue()->dumpQueuePool();
 delete looperThread;
 looperThread = nullptr;
 ```
+
 ###### >2 subthread send message to looper of main
 ```
 looperThread = new LooperThread("MainLooperThread", msgPoolSize, true);
