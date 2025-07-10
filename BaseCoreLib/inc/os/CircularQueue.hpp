@@ -32,39 +32,49 @@ __BEGIN__
             tail_(0),
             buffer_(new T[capacity]) {}
     
-        ~CircularQueue() {
+        ~CircularQueue() 
+		{
             delete[] buffer_;
         }
     
-        bool empty() {
+        bool empty() 
+		{
             std::unique_lock<std::mutex> lock(mutex_);
             return size_ == 0;
         }
     
-        bool full() {
+        bool full() 
+		{
             std::unique_lock<std::mutex> lock(mutex_);
             return size_ == capacity_;
         }
     
-        size_t size() {
+        size_t size() 
+		{
             std::unique_lock<std::mutex> lock(mutex_);
             return size_;
         }
     
-        size_t capacity() {
+        size_t capacity() 
+		{
             return capacity_;
         }
     
-        bool push(const T& value, bool block = true) {
+        bool push(const T& value, bool block = true) 
+		{
             std::unique_lock<std::mutex> lock(mutex_);
     
-            if (block) {
-                while (size_ == capacity_) {
+            if (block) 
+			{
+                while (size_ == capacity_) 
+				{
                     not_full_.wait(lock);
                 }
             }
-            else {
-                if (size_ == capacity_) {
+            else 
+			{
+                if (size_ == capacity_) 
+				{
                     return false;
                 }
             }
@@ -78,16 +88,21 @@ __BEGIN__
             return true;
         }
     
-        bool push(T&& value, bool block = true) {
+        bool push(T&& value, bool block = true) 
+		{
             std::unique_lock<std::mutex> lock(mutex_);
     
-            if (block) {
-                while (size_ == capacity_) {
+            if (block) 
+			{
+                while (size_ == capacity_) 
+				{
                     not_full_.wait(lock);
                 }
             }
-            else {
-                if (size_ == capacity_) {
+            else 
+			{
+                if (size_ == capacity_)
+				{
                     return false;
                 }
             }
@@ -101,16 +116,21 @@ __BEGIN__
             return true;
         }
     
-        bool pop(T& value, bool block = true) {
+        bool pop(T& value, bool block = true) 
+		{
             std::unique_lock<std::mutex> lock(mutex_);
     
-            if (block) {
-                while (size_ == 0) {
+            if (block) 
+			{
+                while (size_ == 0)
+				{
                     not_empty_.wait(lock);
                 }
             }
-            else {
-                if (size_ == 0) {
+            else 
+			{
+                if (size_ == 0) 
+				{
                     return false;
                 }
             }
@@ -141,14 +161,17 @@ __BEGIN__
     public:
         RingQueue() : read_idx_(0), write_idx_(0), data_{} {}
     
-        bool Push(const T& item, bool block = false) { return PushImpl(item, block); }
-        bool Push(T&& item, bool block = false) { return PushImpl(std::move(item), block); }
+        bool push(const T& item, bool block = false) { return pushImpl(item, block); }
+        bool push(T&& item, bool block = false) { return pushImpl(std::move(item), block); }
     
-        bool Pop(T& item, bool block = false) {
+        bool pop(T& item, bool block = false) 
+		{
             size_t current_read_idx = read_idx_.load(std::memory_order_relaxed);
     
-            while (current_read_idx == write_idx_.load(std::memory_order_acquire)) {
-                if (!block) {
+            while (current_read_idx == write_idx_.load(std::memory_order_acquire))
+			{
+                if (!block)
+				{
                     return false;
                 }
                 std::this_thread::yield();
@@ -161,11 +184,14 @@ __BEGIN__
         }
     
         template <typename Func>
-        bool Pop(Func&& func, bool block = false) {
+        bool pop(Func&& func, bool block = false) 
+		{
             size_t current_read_idx = read_idx_.load(std::memory_order_relaxed);
     
-            while (current_read_idx == write_idx_.load(std::memory_order_acquire)) {
-                if (!block) {
+            while (current_read_idx == write_idx_.load(std::memory_order_acquire)) 
+			{
+                if (!block) 
+				{
                     return false;
                 }
                 std::this_thread::yield();
@@ -179,24 +205,29 @@ __BEGIN__
             return true;
         }
     
-        bool IsEmpty() const {
+        bool isEmpty() const 
+		{
             return read_idx_.load(std::memory_order_acquire) ==
                 write_idx_.load(std::memory_order_acquire);
         }
     
-        bool IsFull() const {
+        bool isFull() const 
+		{
             return Next(write_idx_.load(std::memory_order_acquire)) ==
                 read_idx_.load(std::memory_order_acquire);
         }
     
     private:
         template <typename Item>
-        bool PushImpl(Item&& item, bool block = false) {
+        bool pushImpl(Item&& item, bool block = false) 
+		{
             size_t current_write_idx = write_idx_.load(std::memory_order_relaxed);
             size_t next_write_idx = Next(current_write_idx);
     
-            while (next_write_idx == read_idx_.load(std::memory_order_acquire)) {
-                if (!block) {
+            while (next_write_idx == read_idx_.load(std::memory_order_acquire)) 
+			{
+                if (!block) 
+				{
                     return false;
                 }
                 std::this_thread::yield();

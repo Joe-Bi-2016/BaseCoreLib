@@ -112,7 +112,6 @@ private:
     MemoryPool pool;
 
 public:
-    // 禁止拷贝构造和赋值
     QueueCAS(const QueueCAS&) = delete;
     QueueCAS& operator=(const QueueCAS&) = delete;
 };
