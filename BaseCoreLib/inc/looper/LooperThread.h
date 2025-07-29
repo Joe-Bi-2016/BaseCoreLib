@@ -60,7 +60,7 @@ __BEGIN__
             int                 mMsgPoolSize;
             bool                mLooperExited;
 
-            friend static void threadlooper_entry(void* param);
+            friend void threadlooper_entry(void* param);
         };
 
 

@@ -21,7 +21,7 @@ __BEGIN__
     #define LOG_TAG (LooperThread):
     
    //------------------------------------------------------------------------//
-    static void threadlooper_entry(void *param)
+    void threadlooper_entry(void *param)
      {
         LooperThread *_this = static_cast<LooperThread*>(param);
         LOGD("threadlooper_entry:running handler thread name = %s", _this->getThreadName().c_str());
