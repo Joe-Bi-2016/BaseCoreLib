@@ -18,7 +18,7 @@ __CExternBegin__
     
     //-----------------------------------------------------------------------//
     #define STACK_ALIGNMENT 16
-    #define STACK_SIZE 8192
+    #define STACK_SIZE 16384
     
     static struct coro* g_co_list = NULL;
     static struct coro g_main_co = { NULL, NULL, NULL, {0}, co_running, NULL };
@@ -45,15 +45,27 @@ __CExternBegin__
     
     //-----------------------------------------------------------------------//
     struct coro* __co_select(void) {
-        if (g_co_list == NULL)
+       if (g_co_list == NULL)
             return NULL;
-    
+
+        static int cnt = 0;
         int idx = rand() % g_co_cnt;
         struct coro* cur = g_co_list;
         while (idx-- > 0) {
             cur = cur->next;
         }
-    
+
+        cnt++;
+        if (cur->status == co_done) { // if cnt == 2, then reback to main coroutine to running
+            if (cnt == 2) {
+                cnt = 0;
+                return &g_main_co;
+            }
+            else
+                return __co_select();
+        }
+        cnt--;
+
         return   cur;
     }
     
@@ -81,8 +93,7 @@ __CExternBegin__
         assert(__coro__ != NULL);
         __coro__->func(__coro__->arg);
         __coro__->status = co_done;
-        g_cur_co = &g_main_co;
-        longjmp(g_cur_co->ctx, 1);
+        __co_yield();
     }
     
     //-----------------------------------------------------------------------//
@@ -184,13 +195,7 @@ __CExternBegin__
     //-----------------------------------------------------------------------//
     void __co_finish(struct coro* __coro__) {
         assert(__coro__ != NULL);
-    
-        if (__coro__->status == co_ready) {
-            printf("The coroutine has not been started. If it is not resumed, there will be a memory leak!\n");
-            return;
-        }
-    
-        while (__coro__->status != co_done)
+        while (__coro__->status == co_running || __coro__->status == co_suspend)
             __co_yield();
     
         struct coro* pre = NULL;
@@ -204,11 +209,18 @@ __CExternBegin__
                 cur->next = NULL;
                 free(cur->stack);
                 free(cur);
+                cur = NULL;
                 g_co_cnt--;
                 break;
             }
             pre = cur;
             cur = cur->next;
+        }
+        
+        if (cur) {
+            if (__coro__->stack != NULL)
+                free(__coro__->stack);
+            free(__coro__);
         }
     }
 
