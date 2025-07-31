@@ -154,7 +154,6 @@ __BEGIN__
     public:
         explicit LockGuard(MyMutex& mutex) : mMutex(mutex)
         {
-            // mMutex = mutex;
             mMutex.lock();
         }
 

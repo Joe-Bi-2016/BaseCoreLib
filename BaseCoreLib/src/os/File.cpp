@@ -681,7 +681,7 @@ __BEGIN__
             do
             {
                 files.push_back(fileinfo.name);
-            } while (_findnext(hFile, &fileinfo) == 0); //寻找下一个，成功返回0，否则-1
+            } while (_findnext(hFile, &fileinfo) == 0); 
             _findclose(hFile);
         }
         return true;

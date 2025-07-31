@@ -43,5 +43,5 @@ __CExternBegin__
     __CExternEnd__
 __END__
 
-#endif
+#endif // __SimpleCoroutine_h__
 
