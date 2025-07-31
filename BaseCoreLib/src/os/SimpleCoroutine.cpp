@@ -119,6 +119,11 @@ __CExternBegin__
     
         if (setjmp(g_main_co.ctx) == 0) {
             g_cur_co = __coro__;
+			if (g_cur_co->status == co_suspend) {// avoid restart __coro__'s function
+				longjmp(g_cur_co->ctx, 1);
+				return;
+			}
+
             g_cur_co->status = co_running;
             void* func = __co_run;
             void* arg = g_cur_co;

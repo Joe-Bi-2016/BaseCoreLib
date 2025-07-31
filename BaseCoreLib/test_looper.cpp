@@ -96,7 +96,9 @@ int main(void)
 		h->sendMessage(std::move(msg));
 
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+		timeBeginPeriod(1);
 		std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroseconds));
+		timeEndPeriod(1);
 #else
 		usleep(sleepMicroseconds);
 #endif
@@ -158,7 +160,9 @@ int main(void)
 			mainH->sendMessage(std::move(msg));
 
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
+			timeBeginPeriod(1);
 			std::this_thread::sleep_for(std::chrono::microseconds(sleepMicroseconds));
+			timeEndPeriod(1);
 #else
 			usleep(sleepMicroseconds);
 #endif
