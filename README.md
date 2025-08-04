@@ -1,4 +1,3 @@
-![License](https://img.shields.io/badge/license-MIT-blue.svg)
 ![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20MacOS%20%7C%20Android-brightgreen)
 ![Language](https://img.shields.io/badge/language-C%20%7C%20C++-orange)
 
@@ -137,6 +136,3 @@ delete looperThread;
 looperThread = nullptr;
 ```
 
-## License
-
-This project is licensed under the MIT License - see the [LICENSE](LICENSE.txt) file for details.
