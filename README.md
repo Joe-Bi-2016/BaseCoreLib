@@ -1,6 +1,6 @@
 ![License](https://img.shields.io/badge/license-MIT-blue.svg)
-![Platform](https://img.shields.io/badge/platform-Android%20%7C%20Linux-lightgrey)
-![Language](https://img.shields.io/badge/language-C%2B%2B%20%7C%20GLSL-orange)
+![Platform](https://img.shields.io/badge/platform-Linux%20%7C%20Windows%20%7C%20Android-lightgrey)
+![Language](https://img.shields.io/badge/language-C/C%2B%2B)
 
 # Base core Libarary
 
