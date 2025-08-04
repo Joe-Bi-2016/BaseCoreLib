@@ -2,6 +2,10 @@
 
 A library of basic C/C++ feature suites that support C++11 and POSIX standards as well as Windows, Linux, macOS, and Android platforms.It contain file operation, mutex, condition variable, semaphore, thread pool, circular queue, lock-free queue, looper that similar with android, simple coroutine, spdlog library for log.
 
+## License
+
+This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
 ## Note:
 If want generate library, should change basecore/CMakeLists.txt's add_executable to target_link_libraries.
 

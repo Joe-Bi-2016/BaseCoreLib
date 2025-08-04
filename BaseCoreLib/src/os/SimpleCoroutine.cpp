@@ -20,10 +20,10 @@ __CExternBegin__
     #define STACK_ALIGNMENT 16
     #define STACK_SIZE 16384
     
-    static struct coro* g_co_list = NULL;
-    static struct coro g_main_co = { NULL, NULL, NULL, {0}, co_running, NULL };
-    static struct coro* g_cur_co = &g_main_co;
-    static int g_co_cnt = 0;
+    thread_local static struct coro* g_co_list = NULL;
+    thread_local static struct coro g_main_co = { NULL, NULL, NULL, {0}, co_running, NULL };
+    thread_local static struct coro* g_cur_co = &g_main_co;
+    thread_local static int g_co_cnt = 0;
 
     //-----------------------------------------------------------------------//    
     static inline uintptr_t alignstack(uintptr_t stack, size_t alignment) {
@@ -31,7 +31,7 @@ __CExternBegin__
     }
     
     //-----------------------------------------------------------------------//
-    void __co_add_list(struct coro* __coro__) {
+    void coro_add_list(struct coro* __coro__) {
         struct coro* head = g_co_list;
         while (head) {
             if (head == __coro__)
@@ -44,7 +44,7 @@ __CExternBegin__
     }
     
     //-----------------------------------------------------------------------//
-    struct coro* __co_select(void) {
+    struct coro* coro_select(void) {
        if (g_co_list == NULL)
             return NULL;
 
@@ -62,7 +62,7 @@ __CExternBegin__
                 return &g_main_co;
             }
             else
-                return __co_select();
+                return coro_select();
         }
         cnt--;
 
@@ -70,7 +70,7 @@ __CExternBegin__
     }
     
     //-----------------------------------------------------------------------//
-    struct coro* __co_create(co_func __cofunc__, void* __arg__) {
+    struct coro* coro_create(co_func __cofunc__, void* __arg__) {
         struct coro* new_co = (struct coro*)malloc(sizeof(struct coro));
         if (!new_co)
             return NULL;
@@ -86,19 +86,19 @@ __CExternBegin__
     
     //-----------------------------------------------------------------------//
     #if defined(_MSC_VER)
-    void __stdcall __co_run(struct coro* __coro__) {
+    void __stdcall coro_run(struct coro* __coro__) {
     #else 
-    void __co_run(struct coro* __coro__) {
+    void coro_run(struct coro* __coro__) {
     #endif
         assert(__coro__ != NULL);
         __coro__->func(__coro__->arg);
         __coro__->status = co_done;
-        __co_yield();
+        coro_yield();
     }
     
     //-----------------------------------------------------------------------//
-    // Note: __co_resume can only be called through the main coroutine, otherwise it will destroy g_main_co  
-    void __co_resume(struct coro* __coro__) {
+    // Note: coro_resume can only be called through the main coroutine, otherwise it will destroy g_main_co  
+    void coro_resume(struct coro* __coro__) {
         assert(__coro__ != NULL);
         assert(__coro__->func && __coro__->arg);
     
@@ -114,8 +114,8 @@ __CExternBegin__
             }
         }
     
-        __co_add_list(&g_main_co);
-        __co_add_list(__coro__);
+        coro_add_list(&g_main_co);
+        coro_add_list(__coro__);
     
         if (setjmp(g_main_co.ctx) == 0) {
             g_cur_co = __coro__;
@@ -125,7 +125,7 @@ __CExternBegin__
 			}
 
             g_cur_co->status = co_running;
-            void* func = __co_run;
+            void* func = coro_run;
             void* arg = g_cur_co;
     
             void* stack = (void*)alignstack((uintptr_t)g_cur_co->stack + STACK_SIZE, STACK_ALIGNMENT);
@@ -175,11 +175,11 @@ __CExternBegin__
     }
     
     //-----------------------------------------------------------------------//
-    void __co_yield(void) {
+    void coro_yield(void) {
         assert(g_cur_co != NULL);
         int ret = setjmp(g_cur_co->ctx);
         if (ret == 0) {
-            struct coro* next = __co_select();
+            struct coro* next = coro_select();
             assert(next != NULL);
             if (next == NULL || next == g_cur_co || next->status == co_done) {
                 longjmp(g_cur_co->ctx, 1);
@@ -198,10 +198,10 @@ __CExternBegin__
     }
     
     //-----------------------------------------------------------------------//
-    void __co_finish(struct coro* __coro__) {
+    void coro_finish(struct coro* __coro__) {
         assert(__coro__ != NULL);
         while (__coro__->status == co_running || __coro__->status == co_suspend)
-            __co_yield();
+            coro_yield();
     
         struct coro* pre = NULL;
         struct coro* cur = g_co_list;

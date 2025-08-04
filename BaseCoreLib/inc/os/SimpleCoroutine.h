@@ -35,10 +35,10 @@ __CExternBegin__
         struct coro* next;
     };
     
-    struct coro* __co_create(co_func __cofunc__, void* __arg__);
-    void __co_resume(struct coro* __coro__);
-    void __co_yield(void);
-    void __co_finish(struct coro* __coro__);
+    struct coro* coro_create(co_func __cofunc__, void* __arg__);
+    void coro_resume(struct coro* __coro__);
+    void coro_yield(void);
+    void coro_finish(struct coro* __coro__);
 
     __CExternEnd__
 __END__
