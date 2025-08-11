@@ -32,7 +32,7 @@ private:
         std::atomic<size_t> version; 
 
         qNode(void) : next(nullptr), version(0) {}
-        explicit qNode(ElemType elem) : elem(elem), next(nullptr), version(0) {}
+        explicit qNode(ElemType e) : elem(e), next(nullptr), version(0) {}
     } Node;
 
     class MemoryPool {
@@ -125,7 +125,7 @@ QueueCAS<ElemType>::QueueCAS(void) {
 
 template<typename ElemType>
 QueueCAS<ElemType>::~QueueCAS(void) {
-    Node* current = head.load(std::memory_order_relaxed);
+    Node* current = head.load(std::memory_order_relaxed)->next.load(std::memory_order_relaxed);
     while (current) {
         Node* next = current->next.load(std::memory_order_relaxed);
         pool.deallocate(current);
@@ -158,9 +158,11 @@ void QueueCAS<ElemType>::enqueue(ElemType elem) {
             if (old_tail->next.compare_exchange_weak(next, new_node, std::memory_order_release, std::memory_order_relaxed)) {
                 break;
             }
-        }
-        else {
-            tail.compare_exchange_weak(old_tail, next, std::memory_order_release, std::memory_order_relaxed);
+        } 
+		else {
+            if (!tail.compare_exchange_weak(old_tail, next, std::memory_order_release, std::memory_order_relaxed)) {
+                continue;
+            }
         }
     }
 
@@ -189,17 +191,19 @@ ElemType QueueCAS<ElemType>::dequeue(void) {
             if (next == nullptr) {
                 throw std::runtime_error("Queue is empty");
             }
-            tail.compare_exchange_weak(old_tail, next, std::memory_order_release, std::memory_order_relaxed);
-        }
-        else {
-            if (head.compare_exchange_weak(old_head, next, std::memory_order_release, std::memory_order_relaxed)) {
-                break; 
+            if (!tail.compare_exchange_weak(old_tail, next, std::memory_order_release, std::memory_order_relaxed)) {
+                continue;
+            }
+        } else {
+            Node* next2 = next->next.load(std::memory_order_relaxed);
+            if (old_head->next.compare_exchange_weak(next, next2, std::memory_order_release, std::memory_order_relaxed)) {
+                break;
             }
         }
     }
 
     ElemType val = next->elem;
-    pool.deallocate(old_head);
+    pool.deallocate(next);
 
     return val;
 }
@@ -217,8 +221,7 @@ void QueueCAS<ElemType>::dump(void) {
     while (current) {
         ElemType elem = current->elem;
         std::cout << elem << " ";
-        Node* next = current->next.load(std::memory_order_acquire);
-        current = next;
+        current = current->next.load(std::memory_order_acquire);
     }
     std::cout << std::endl;
 }
