@@ -69,7 +69,9 @@ int main(void)
 	LOGI("[mainThread]-%s", "Enter the messge pool size:->");
 	cin >> msgPoolSize;
 	
+#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
 	timeBeginPeriod(1);
+#endif
 
 	LooperThread* looperThread = new LooperThread("SubLooperThread", msgPoolSize);
 	Looper loop = looperThread->getLooper();	
@@ -179,7 +181,9 @@ int main(void)
 
 	LOGI("mainLoop shared cnt = %ld", mainLoop.use_count());
 
+#if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
 	timeEndPeriod(1);
+#endif
 	
 	system("pause");
 

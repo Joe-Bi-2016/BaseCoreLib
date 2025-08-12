@@ -20,10 +20,10 @@ __CExternBegin__
     #define STACK_ALIGNMENT 16
     #define STACK_SIZE 16384
     
-    thread_local static struct coro* g_co_list = NULL;
-    thread_local static struct coro g_main_co = { NULL, NULL, NULL, {0}, co_running, NULL };
-    thread_local static struct coro* g_cur_co = &g_main_co;
-    thread_local static int g_co_cnt = 0;
+    threadlocal static struct coro* g_co_list = NULL;
+    threadlocal static struct coro g_main_co = { NULL, NULL, NULL, {0}, co_running, NULL };
+    threadlocal static struct coro* g_cur_co = &g_main_co;
+    threadlocal static int g_co_cnt = 0;
 
     //-----------------------------------------------------------------------//    
     static inline uintptr_t alignstack(uintptr_t stack, size_t alignment) {
@@ -140,7 +140,7 @@ __CExternBegin__
                 "movq %1, %%rdi;"
                 "call  *%2;"
                 :
-            : "r"(stack), "r"(arg), "r"(func)
+				: "r"(stack), "r"(arg), "r"(func)
                 : "rdi", "rsp", "memory");
     #else
             asm volatile(
@@ -149,7 +149,7 @@ __CExternBegin__
                 "movq %1, %%rdi;"
                 "call  *%2;"
                 :
-            : "r"(stack), "r"(arg), "r"(func)
+				: "r"(stack), "r"(arg), "r"(func)
                 : "rdi", "rsp", "memory");
     #endif
     #elif defined(_MSC_VER)
