@@ -136,3 +136,32 @@ delete looperThread;
 looperThread = nullptr;
 ```
 
+## Example for coroutine usage:
+```
+int cocnt = 0;
+void* coro_function(void* arg) {
+    for (int i = 0; i < 100; i++) {
+        printf("task: [%s] seq:[%d] \n", (const char*)arg, cocnt++);
+        coro_yield();
+    }
+
+    return NULL;
+}
+
+int main() {
+    coro* co1 = coro_create(coro_function, (void*)"coro1");
+    coro* co2 = coro_create(coro_function, (void*)"coro2");
+    coro* co3 = coro_create(coro_function, (void*)"coro3");
+
+    coro_resume(co1);
+    coro_resume(co2);
+    coro_resume(co3);
+
+    coro_finish(co1);
+    coro_finish(co2);
+    coro_finish(co3);
+
+    printf("all %d coroutines have been executed\n", cocnt);
+    return 0;
+}
+```
