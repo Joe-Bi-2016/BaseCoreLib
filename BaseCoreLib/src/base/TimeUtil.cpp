@@ -92,13 +92,13 @@ __BEGIN__
     uint64 getNowTimeOfNs(void)
     {
 #if (defined(_WIN32) || defined(_WIN64) || defined(__CYGWIN__))
-        auto now = std::chrono::system_clock::now();
-        std::chrono::nanoseconds ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch()) % 1000000000;
+        auto now = std::chrono::high_resolution_clock::now();
+        auto ns = std::chrono::duration_cast<std::chrono::nanoseconds>(now.time_since_epoch());
         return ns.count();
 #else
         struct timespec t;
-        clock_gettime(CLOCK_MONOTONIC, &t);
-        return uint64(t.tv_sec * PER_SEC_NSEC + t.tv_nsec);
+        clock_gettime(CLOCK_REALTIME, &t);
+        return static_cast<uint64_t>(t.tv_sec * PER_SEC_NSEC + t.tv_nsec);
 #endif
     }
 

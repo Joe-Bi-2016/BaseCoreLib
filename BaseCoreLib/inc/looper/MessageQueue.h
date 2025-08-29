@@ -100,7 +100,8 @@ __BEGIN__
 
         private:
             std::string         mName;
-            Message             mMsgQueue;
+            Message             mMsgQueueHead;
+            Msg*                mMsgQueueTail;
             int                 mMsgQueueSize;
             mutable Mutex       mLock;
             Condition           mWait;

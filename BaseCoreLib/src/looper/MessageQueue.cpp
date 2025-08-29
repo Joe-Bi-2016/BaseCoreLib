@@ -28,12 +28,14 @@ __BEGIN__
         {\
               Message msg(nullptr); \
               if (prev == p) { \
-                    msg = std::move(mMsgQueue); \
-                    mMsgQueue = std::move(p->mNext);\
+                    msg = std::move(mMsgQueueHead); \
+                    mMsgQueueHead = std::move(p->mNext);\
+                    if (mMsgQueueTail == p) mMsgQueueTail = mMsgQueueHead.get();\
               } \
               else {\
                     msg = std::move(prev->mNext); \
                     prev->mNext = std::move(p->mNext); \
+                    if (mMsgQueueTail == p) mMsgQueueTail = prev;\
               }\
               recycleMsg(std::move(msg)); \
               mMsgQueueSize--; \
@@ -47,7 +49,8 @@ __BEGIN__
    //------------------------------------------------------------------------//
     MsgQueue::MsgQueue(const std::string& name, int MaxMsgPoolSize /* = 50 */)
     : mName(name)
-    , mMsgQueue(nullptr)
+    , mMsgQueueHead(nullptr)
+    , mMsgQueueTail(nullptr)
     , mMsgQueueSize(0)
     , mLock()
     , mWait(nullptr)
@@ -71,10 +74,10 @@ __BEGIN__
             AutoMutex critical(&mLock);
 
             Message pre;
-            while (mMsgQueue)
+            while (mMsgQueueHead)
             {
-                pre = std::move(mMsgQueue);
-                mMsgQueue = std::move(pre->mNext);
+                pre = std::move(mMsgQueueHead);
+                mMsgQueueHead = std::move(pre->mNext);
                 pre.reset();
             }
 
@@ -89,6 +92,8 @@ __BEGIN__
             clearMsgPool();
             mMsgPoolMaxSize = 0;
         }
+
+        mMsgQueueTail = nullptr;
 
         LOGD("%s", "Message queue been destroyed!");   
     }
@@ -127,14 +132,21 @@ __BEGIN__
         message->makeInUse();
         message->mWhen = delayDoneTime;
        
-        if(mMsgQueue.get() == nullptr || delayDoneTime == 0 || delayDoneTime < mMsgQueue->mWhen)
+        if(mMsgQueueHead.get() == nullptr || delayDoneTime == 0 || delayDoneTime < mMsgQueueHead->mWhen)
         {
-            message->mNext = std::move(mMsgQueue);
-            mMsgQueue = std::move(message);
+            message->mNext = std::move(mMsgQueueHead);
+            mMsgQueueHead = std::move(message);
+            if (!mMsgQueueTail)  // first add message to list, mMsgQueueTail must is null
+                mMsgQueueTail = mMsgQueueHead.get();
+        }
+        else if (mMsgQueueTail && delayDoneTime >= mMsgQueueTail->mWhen)
+        {
+            mMsgQueueTail->mNext = std::move(message);
+            mMsgQueueTail = mMsgQueueTail->mNext.get();
         }
         else
         {
-            Msg* h = mMsgQueue.get();
+            Msg* h = mMsgQueueHead.get();
             Msg* prev;
             for(;;)
             {
@@ -185,13 +197,13 @@ __BEGIN__
         
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGW("%s", "Message queue is empty");
             return ret;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         for(;;)
         {
             if(h == nullptr)
@@ -222,13 +234,13 @@ __BEGIN__
         
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return ret;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         for(;;)
         {
             if(h == nullptr)
@@ -254,13 +266,13 @@ __BEGIN__
 
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return ret;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         for(;;)
         {
             if(h == nullptr)
@@ -286,13 +298,13 @@ __BEGIN__
 
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return ret;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         for(;;)
         {
             if(h == nullptr)
@@ -322,14 +334,14 @@ __BEGIN__
         
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty£¬ the message will been recycled into message pool.");
             recycleMsg(std::move(message));
             return;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         Msg* prev = h;
         for(;;)
         {
@@ -359,13 +371,13 @@ __BEGIN__
 
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         Msg* prev = h;
         for(;;)
         {
@@ -389,13 +401,13 @@ __BEGIN__
     {
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         Msg* prev = h;
         for(;;)
         {
@@ -419,13 +431,13 @@ __BEGIN__
     {
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         Msg* prev = h;
         for(;;)
         {
@@ -450,13 +462,13 @@ __BEGIN__
     {
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         Msg* prev = h;
         for(;;)
         {
@@ -481,13 +493,13 @@ __BEGIN__
     {
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         Msg* prev = h;
         for(;;)
         {
@@ -511,13 +523,13 @@ __BEGIN__
     {
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         Msg* prev = h;
         for(;;)
         {
@@ -542,13 +554,13 @@ __BEGIN__
     {
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         Msg* prev = h;
         for(;;)
         {
@@ -573,13 +585,13 @@ __BEGIN__
     {
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
             LOGE("%s", "Message queue is empty");
             return;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         Msg* prev = h;
         for(;;)
         {
@@ -604,13 +616,13 @@ __BEGIN__
     {
         AutoMutex critical(&mLock);
 
-        if(mMsgQueue.get() == nullptr)
+        if(mMsgQueueHead.get() == nullptr)
         {
           LOGE("%s", "Message queue is empty");
             return;
         }
 
-        Msg* h = mMsgQueue.get();
+        Msg* h = mMsgQueueHead.get();
         Msg* prev = h;
         for(;;)
         {
@@ -623,10 +635,10 @@ __BEGIN__
                 {
                     Message msg(nullptr);
 
-                    if (h == mMsgQueue.get()) // head
+                    if (h == mMsgQueueHead.get()) // head
                     {
-                        msg = std::move(mMsgQueue);
-                        mMsgQueue = std::move(msg->mNext); 
+                        msg = std::move(mMsgQueueHead);
+                        mMsgQueueHead = std::move(msg->mNext); 
                     }
                     else
                     {
@@ -637,7 +649,13 @@ __BEGIN__
                     recycleMsg(std::move(msg));
                     mMsgQueueSize--;
 
-                    h = prev ? prev->mNext.get() : mMsgQueue.get();
+                    if (h == mMsgQueueTail) {
+                        mMsgQueueTail = prev;
+                        if (prev == h) // only one message in list, mMsgQueueTail should is nullptr after delete head
+                            mMsgQueueTail = nullptr;
+                    }
+
+                    h = prev ? prev->mNext.get() : mMsgQueueHead.get();
                 }
                 else
                 {
@@ -647,13 +665,16 @@ __BEGIN__
             }
             else
             {
-                if (mMsgQueue.get() == nullptr)
+                if (mMsgQueueHead.get() == nullptr)
                     break;
 
-                Message msg = std::move(mMsgQueue);
-                mMsgQueue = std::move(mMsgQueue->mNext);
+                Message msg = std::move(mMsgQueueHead);
+                mMsgQueueHead = std::move(mMsgQueueHead->mNext);
                 recycleMsg(std::move(msg));
                 mMsgQueueSize--;
+
+                if (mMsgQueueSize == 0)
+                    mMsgQueueTail = nullptr;
             }
         }
     }
@@ -664,7 +685,7 @@ __BEGIN__
         bool ret = false;    
         AutoMutex critical(&mLock);
         uint64 now = getNowTimeOfMs();
-        ret = (mMsgQueue.get() == nullptr || (now < mMsgQueue->mWhen));
+        ret = (mMsgQueueHead.get() == nullptr || (now < mMsgQueueHead->mWhen));
 
         return ret;
     }    
@@ -736,7 +757,7 @@ __BEGIN__
             }
 
             uint64 now = getNowTimeOfNs() / PER_SEC_USEC;
-            Msg* h = mMsgQueue.get();
+            Msg* h = mMsgQueueHead.get();
             Msg* prev(nullptr);
 
             if(h)
@@ -745,13 +766,17 @@ __BEGIN__
                 {
                     if (prev == nullptr)
                     {
-                        ret = std::move(mMsgQueue);
-                        mMsgQueue = std::move(ret->mNext);
+                        ret = std::move(mMsgQueueHead);
+                        mMsgQueueHead = std::move(ret->mNext);
+                        if (mMsgQueueHead.get() == nullptr)
+                            mMsgQueueTail = nullptr;
                     }
                     else
                     {
                         ret = std::move(prev->mNext);
                         prev->mNext = std::move(ret->mNext);
+                        if (mMsgQueueTail == ret.get())
+                            mMsgQueueTail = prev;
                     }
                     mMsgQueueSize--;
 
@@ -760,7 +785,7 @@ __BEGIN__
                 }
                 else
                 {
-                    nextPollMsgTimeoutMillis = long(mMsgQueue->mWhen - now);
+                    nextPollMsgTimeoutMillis = long(mMsgQueueHead->mWhen - now);
                 }
             }
             else
@@ -841,16 +866,18 @@ __BEGIN__
         }
 
         // does not use reset to release list, it maybe stack overflow
-        // when the mMsgQueue'size too large
-//        mMsgQueue.reset();
+        // when the mMsgQueueHead'size too large
+//        mMsgQueueHead.reset();
 
         Message pre;
-        while (mMsgQueue)
+        while (mMsgQueueHead)
         {
-            pre = std::move(mMsgQueue);
-            mMsgQueue = std::move(pre->mNext);
+            pre = std::move(mMsgQueueHead);
+            mMsgQueueHead = std::move(pre->mNext);
             pre.reset();
         }
+        
+        mMsgQueueTail = nullptr;
 
         mQuit = true;
         mBlocked = false;
@@ -882,7 +909,7 @@ __BEGIN__
     void MsgQueue::dumpQueueList(void) const
     {
         AutoMutex critical(&mLock);
-        Msg* p = mMsgQueue.get();
+        Msg* p = mMsgQueueHead.get();
         printf("\n");
         LOGI("%s\n\n", "---------------------Message queue begin---------------------");
         for(;;)
