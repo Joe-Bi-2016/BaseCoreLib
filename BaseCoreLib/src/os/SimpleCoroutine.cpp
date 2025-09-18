@@ -114,7 +114,8 @@ __CExternBegin__
             }
         }
     
-        coro_add_list(&g_main_co);
+		if (g_co_cnt == 0) // a main coroutine object can only be added to the list once
+			coro_add_list(&g_main_co);
         coro_add_list(__coro__);
     
         if (setjmp(g_main_co.ctx) == 0) {
@@ -198,7 +199,7 @@ __CExternBegin__
     }
     
     //-----------------------------------------------------------------------//
-    void coro_finish(struct coro* __coro__) {
+    void coro_destroy(struct coro* __coro__) {
         assert(__coro__ != NULL);
         while (__coro__->status == co_running || __coro__->status == co_suspend)
             coro_yield();

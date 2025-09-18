@@ -38,7 +38,7 @@ __CExternBegin__
     struct coro* coro_create(co_func __cofunc__, void* __arg__);
     void coro_resume(struct coro* __coro__);
     void coro_yield(void);
-    void coro_finish(struct coro* __coro__);
+    void coro_destroy(struct coro* __coro__);
 
     __CExternEnd__
 __END__
