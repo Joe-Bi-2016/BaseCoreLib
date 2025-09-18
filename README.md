@@ -157,9 +157,9 @@ int main() {
     coro_resume(co2);
     coro_resume(co3);
 
-    coro_finish(co1);
-    coro_finish(co2);
-    coro_finish(co3);
+    coro_destroy(co1);
+    coro_destroy(co2);
+    coro_destroy(co3);
 
     printf("all %d coroutines have been executed\n", cocnt);
     return 0;
