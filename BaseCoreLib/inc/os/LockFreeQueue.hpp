@@ -42,6 +42,12 @@ private:
         }
 
         ~MemoryPool() {
+            Node* current = free_list.load(std::memory_order_relaxed);
+            while (current) {
+                Node* next = current->next.load(std::memory_order_relaxed);
+                current = next;
+            }
+			
             std::lock_guard<std::mutex> lock(mtx);
             for (auto& node : pool) {
                 node.reset();
@@ -125,7 +131,7 @@ QueueCAS<ElemType>::QueueCAS(void) {
 
 template<typename ElemType>
 QueueCAS<ElemType>::~QueueCAS(void) {
-    Node* current = head.load(std::memory_order_relaxed)->next.load(std::memory_order_relaxed);
+    Node* current = head.load(std::memory_order_relaxed);
     while (current) {
         Node* next = current->next.load(std::memory_order_relaxed);
         pool.deallocate(current);
