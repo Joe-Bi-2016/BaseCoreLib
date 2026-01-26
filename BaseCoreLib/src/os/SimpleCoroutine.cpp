@@ -48,7 +48,7 @@ __CExternBegin__
        if (g_co_list == NULL)
             return NULL;
 
-        static int cnt = 0;
+        threadlocal static int cnt = 0;
         int idx = rand() % g_co_cnt;
         struct coro* cur = g_co_list;
         while (idx-- > 0) {
@@ -134,7 +134,7 @@ __CExternBegin__
     
     #if defined(__GNUC__) || defined(__clang__)
             // format: asm volatile("InSTructiON List" : Output: Input: Clobber / Modify)
-    #if defined(__x86_64__)
+		#if defined(__x86_64__)
             asm volatile(
                 "movq %0, %%rsp;"
                 "subq $0x20, %%rsp;"
@@ -143,34 +143,39 @@ __CExternBegin__
                 :
 				: "r"(stack), "r"(arg), "r"(func)
                 : "rdi", "rsp", "memory");
-    #else
+		#elif defined(__i386__)
             asm volatile(
-                "movq %0, %%rsp;"
-                "subq $8, %%rsp;"
-                "movq %1, %%rdi;"
-                "call  *%2;"
-                :
+				"movl %0, %%esp;"
+				"subl $8, %%esp;"
+				"pushl %1;"
+				"call *%2;"
+				"addl $4, %%esp;"
+				:
 				: "r"(stack), "r"(arg), "r"(func)
-                : "rdi", "rsp", "memory");
-    #endif
+				: "eax", "ecx", "edx", "memory");
+		#else
+			#error "Unsupported architecture"		
+		#endif
     #elif defined(_MSC_VER)
-    #if defined(_WIN64)
+		#if defined(_WIN64)
             __asm {
                 mov rsp, stack
                 sub rsp, 0x20
                 mov rcx, arg
                 call func
             }
-    #else
+		#elif defined(_M_IX86)
             __asm {
                 mov esp, stack
                 sub esp, 8
                 push arg
                 call func
             }
-    #endif
+		#else
+			#error "Unsupported architecture"			
+		#endif
     #else
-    #error "Unsupported compiler"
+		#error "Unsupported compiler"
     #endif
         }
     }
@@ -201,6 +206,10 @@ __CExternBegin__
     //-----------------------------------------------------------------------//
     void coro_destroy(struct coro* __coro__) {
         assert(__coro__ != NULL);
+		
+		if (__coro__ == &g_main_co)
+        return;
+		
         while (__coro__->status == co_running || __coro__->status == co_suspend)
             coro_yield();
     
@@ -216,6 +225,7 @@ __CExternBegin__
                 free(cur->stack);
                 free(cur);
                 cur = NULL;
+				__coro__ = NULL;
                 g_co_cnt--;
                 break;
             }
@@ -223,7 +233,7 @@ __CExternBegin__
             cur = cur->next;
         }
         
-        if (cur) {
+        if (__coro__) {
             if (__coro__->stack != NULL)
                 free(__coro__->stack);
             free(__coro__);
