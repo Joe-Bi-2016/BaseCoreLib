@@ -11,6 +11,7 @@
 #include <stdlib.h>
 #include <assert.h>
 #include <memory.h>
+#include <string.h>
 
 //---------------------------------------------------------------------------//
 __BEGIN__
@@ -56,14 +57,19 @@ __CExternBegin__
         }
 
         cnt++;
+		
         if (cur->status == co_done) { // if cnt == 2, then reback to main coroutine to running
             if (cnt == 2) {
                 cnt = 0;
                 return &g_main_co;
             }
-            else
-                return coro_select();
+            else {
+				struct coro* result = coro_select();
+				cnt--;
+				return result;
+			}
         }
+		
         cnt--;
 
         return cur;
@@ -109,7 +115,7 @@ __CExternBegin__
         if (__coro__->stack == NULL) {
             __coro__->stack = (uint8_t*)malloc(STACK_SIZE);
             if (__coro__->stack == NULL) {
-                free(__coro__);
+        //    	free(__coro__);
                 return;
             }
         }
@@ -153,9 +159,48 @@ __CExternBegin__
 				:
 				: "r"(stack), "r"(arg), "r"(func)
 				: "eax", "ecx", "edx", "memory");
+		#elif defined(__aarch64__) || defined(__arm64__)
+            /* AArch64 (ARM64) - GCC/Clang
+               Set sp to coroutine stack, prepare x0 (first arg), and branch with link to function pointer.
+               We subtract a small frame (16 bytes) to be conservative / keep alignment. */
+            asm volatile(
+                "mov sp, %0\n"
+                "sub sp, sp, #0x10\n"
+                "mov x0, %1\n"
+                "blr %2\n"
+                :
+                : "r"(stack), "r"(arg), "r"(func)
+                : "x0", "sp", "memory");
+		#elif defined(__arm__)
+			// ARM32 implementation
+			#ifdef __thumb__
+				"mov sp, %0;"
+                "sub sp, sp, #8;"
+                "and sp, sp, #~7;"
+                "push {r4-r7, lr};"
+                "mov r0, %1;"
+                "blx %2;"
+                "pop {r4-r7, pc};"
+                :
+                : "r"(stack), "r"(arg), "r"(func)
+                : "r0", "r1", "r2", "r3", "sp", "memory");
+			#else
+            asm volatile(
+                "mov sp, %0;"
+                "sub sp, sp, #8;"
+                "and sp, sp, #~7;"
+                "stmfd sp!, {r4-r7, lr};"
+                "mov r0, %1;"
+                "mov lr, pc;"
+                "bx %2;"
+                "ldmfd sp!, {r4-r7, pc}^;"
+                :
+                : "r"(stack), "r"(arg), "r"(func)
+                : "r0", "r1", "r2", "r3", "lr", "memory");
+			#endif		  
 		#else
 			#error "Unsupported architecture"		
-		#endif
+		#endif		
     #elif defined(_MSC_VER)
 		#if defined(_WIN64)
             __asm {
@@ -171,6 +216,8 @@ __CExternBegin__
                 push arg
                 call func
             }
+		#elif defined(_M_ARM64) || defined(_M_ARM)
+            #error "MSVC inline assembly on ARM/ARM64 is not supported in this source. Build with clang/gcc or provide an assembly helper."
 		#else
 			#error "Unsupported architecture"			
 		#endif
