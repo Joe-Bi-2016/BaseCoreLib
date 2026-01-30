@@ -60,13 +60,10 @@ __CExternBegin__
 		
         if (cur->status == co_done) { // if cnt == 2, then reback to main coroutine to running
             if (cnt == 2) {
-                cnt = 0;
-                return &g_main_co;
+                cur = &g_main_co;
             }
             else {
-				struct coro* result = coro_select();
-				cnt--;
-				return result;
+				cur = coro_select();
 			}
         }
 		
