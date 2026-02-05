@@ -112,13 +112,13 @@ __CExternBegin__
         if (__coro__->stack == NULL) {
             __coro__->stack = (uint8_t*)malloc(STACK_SIZE);
             if (__coro__->stack == NULL) {
-        //    	free(__coro__);
                 return;
             }
         }
     
 		if (g_co_cnt == 0) // a main coroutine object can only be added to the list once
 			coro_add_list(&g_main_co);
+			
         coro_add_list(__coro__);
     
         if (setjmp(g_main_co.ctx) == 0) {
@@ -252,7 +252,7 @@ __CExternBegin__
         assert(__coro__ != NULL);
 		
 		if (__coro__ == &g_main_co)
-        return;
+			return;
 		
         while (__coro__->status == co_running || __coro__->status == co_suspend)
             coro_yield();
