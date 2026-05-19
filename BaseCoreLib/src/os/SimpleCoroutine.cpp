@@ -9,9 +9,14 @@
 #include "../../inc/os/SimpleCoroutine.h"
 #include <stdio.h>
 #include <stdlib.h>
-#include <assert.h>
 #include <memory.h>
 #include <string.h>
+#if defined(_WIN32)
+#include <windows.h>
+#else
+#include <sys/mman.h>
+#include <unistd.h>
+#endif
 
 //---------------------------------------------------------------------------//
 __BEGIN__
@@ -21,10 +26,90 @@ __CExternBegin__
     #define STACK_ALIGNMENT 16
     #define STACK_SIZE 16384
     
-    threadlocal static struct coro* g_co_list = NULL;
-    threadlocal static struct coro g_main_co = { NULL, NULL, NULL, {0}, co_running, NULL };
-    threadlocal static struct coro* g_cur_co = &g_main_co;
-    threadlocal static int g_co_cnt = 0;
+    static threadlocal struct coro* g_co_list = NULL;
+    static threadlocal struct coro g_main_co = { NULL, NULL, NULL, {0}, co_running, NULL };
+    static threadlocal struct coro* g_cur_co = &g_main_co;
+    static threadlocal int g_co_cnt = 0;
+	static threadlocal int g_co_errno = CO_ERR_NONE;
+	static threadlocal const char* g_co_errmsg = NULL;
+	static threadlocal coro_scheduler_t g_scheduler = NULL;
+
+	//-----------------------------------------------------------------------//
+	costatus coro_status(struct coro* __coro__) {
+		return __coro__ ? __coro__->status : co_done;
+	}
+
+	//-----------------------------------------------------------------------//
+	int coro_errno(void) {
+		return g_co_errno;
+	}
+
+	//-----------------------------------------------------------------------//
+	const char* coro_errmsg(void) {
+		return g_co_errmsg ? g_co_errmsg : "no error";
+	}
+
+	//-----------------------------------------------------------------------//
+	void coro_set_scheduler(coro_scheduler_t sched) {
+		g_scheduler = sched;
+	}
+
+	//-----------------------------------------------------------------------//
+	/* stack alloc memory function.
+	 * Use mmap/VirtualAlloc to allocate an independent stack, 
+	 * and place a guard page at the bottom to prevent overflow
+	 */
+	static uint8_t* stack_alloc(size_t total_size) {
+	#if defined(_WIN32)
+		LPVOID mem = VirtualAlloc(NULL, total_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
+		if (!mem) {
+			g_co_errno = CO_ERR_NOMEM;
+			g_co_errmsg = "VirtualAlloc failed";
+			return NULL;
+		}
+		return (uint8_t*)mem;
+	#else
+		void* mem = mmap(NULL, total_size, PROT_READ | PROT_WRITE, MAP_PRIVATE | MAP_ANONYMOUS, -1, 0);
+		if (mem == MAP_FAILED) {
+			g_co_errno = CO_ERR_NOMEM;
+			g_co_errmsg = "mmap failed";
+			return NULL;
+		}
+		return (uint8_t*)mem;
+	#endif
+	}
+	
+	//-----------------------------------------------------------------------//
+	static void stack_free(uint8_t* stack, size_t total_size) {
+		if (!stack) return;
+	#if defined(_WIN32)
+		VirtualFree(stack, 0, MEM_RELEASE);
+	#else
+		munmap(stack, total_size);
+	#endif
+	}
+	
+	//-----------------------------------------------------------------------//
+	// set up a protected page, with the first page having no access rights
+	static void stack_protect_first_page(uint8_t* stack, size_t page_size) {
+	#if defined(_WIN32)
+		DWORD oldprot;
+		VirtualProtect(stack, page_size, PAGE_NOACCESS, &oldprot);
+	#else
+		mprotect(stack, page_size, PROT_NONE);
+	#endif
+	}
+	
+	//-----------------------------------------------------------------------//
+	static inline size_t get_page_size(void) {
+	#if defined(_WIN32)
+		SYSTEM_INFO si;
+		GetSystemInfo(&si);
+		return si.dwPageSize;
+	#else
+		return (size_t)sysconf(_SC_PAGESIZE);
+	#endif
+	}
 
     //-----------------------------------------------------------------------//    
     static inline uintptr_t alignstack(uintptr_t stack, size_t alignment) {
@@ -45,11 +130,11 @@ __CExternBegin__
     }
     
     //-----------------------------------------------------------------------//
-    struct coro* coro_select(void) {
+    static struct coro* default_scheduler(void) {
        if (g_co_list == NULL)
             return NULL;
 
-        threadlocal static int cnt = 0;
+        static threadlocal int cnt = 0;
         int idx = rand() % g_co_cnt;
         struct coro* cur = g_co_list;
         while (idx-- > 0) {
@@ -61,9 +146,8 @@ __CExternBegin__
         if (cur->status == co_done) { // if cnt == 2, then reback to main coroutine to running
             if (cnt == 2) {
                 cur = &g_main_co;
-            }
-            else {
-				cur = coro_select();
+            } else {
+				cur = default_scheduler();
 			}
         }
 		
@@ -72,11 +156,19 @@ __CExternBegin__
         return cur;
     }
     
+	//-----------------------------------------------------------------------//
+	void coro_init(unsigned int seed) {
+		srand(seed);
+	}
+
     //-----------------------------------------------------------------------//
     struct coro* coro_create(co_func __cofunc__, void* __arg__) {
         struct coro* new_co = (struct coro*)malloc(sizeof(struct coro));
-        if (!new_co)
-            return NULL;
+        if (!new_co) {
+			g_co_errno = CO_ERR_NOMEM;
+			g_co_errmsg = "failed to allocate coroutine structure";
+			return NULL;
+		}
     
         memset(new_co, 0x0, sizeof(struct coro));
         new_co->func = __cofunc__;
@@ -93,7 +185,7 @@ __CExternBegin__
     #else 
     void coro_run(struct coro* __coro__) {
     #endif
-        assert(__coro__ != NULL);
+        if (!__coro__) return;
         __coro__->func(__coro__->arg);
         __coro__->status = co_done;
         coro_yield();
@@ -102,18 +194,28 @@ __CExternBegin__
     //-----------------------------------------------------------------------//
     // Note: coro_resume can only be called through the main coroutine, otherwise it will destroy g_main_co  
     void coro_resume(struct coro* __coro__) {
-        assert(__coro__ != NULL);
-        assert(__coro__->func && __coro__->arg);
-    
-        if (__coro__->status != co_ready && __coro__->status != co_suspend)
-            return;
+		if (!__coro__ || !__coro__->func || !__coro__->arg) {
+			g_co_errno = CO_ERR_INVAL;
+			g_co_errmsg = "invalid coroutine (NULL or missing func/arg)";
+			return;
+		}
+
+		if (__coro__->status != co_ready && __coro__->status != co_suspend) {
+			g_co_errno = CO_ERR_INVAL;
+			g_co_errmsg = "coroutine is not in a resumable state";
+			return;
+		}	
     
         // malloc memory for corountine stack memory
         if (__coro__->stack == NULL) {
-            __coro__->stack = (uint8_t*)malloc(STACK_SIZE);
-            if (__coro__->stack == NULL) {
-                return;
-            }
+            size_t page_size = get_page_size();
+			size_t total_size = STACK_SIZE + page_size; 
+			__coro__->stack = stack_alloc(total_size);
+			if (!__coro__->stack) {
+				return;
+			}
+			
+			stack_protect_first_page(__coro__->stack, page_size);
         }
     
 		if (g_co_cnt == 0) // a main coroutine object can only be added to the list once
@@ -132,9 +234,10 @@ __CExternBegin__
             void* func = coro_run;
             void* arg = g_cur_co;
     
-            void* stack = (void*)alignstack((uintptr_t)g_cur_co->stack + STACK_SIZE, STACK_ALIGNMENT);
-            assert(((uintptr_t)stack & 0xF) == 0);
-    
+			size_t page_size = get_page_size();
+			uint8_t* usable_stack = __coro__->stack + page_size;
+			void* stack = (void*)alignstack((uintptr_t)usable_stack + STACK_SIZE, STACK_ALIGNMENT);
+
     #if defined(__GNUC__) || defined(__clang__)
             // format: asm volatile("InSTructiON List" : Output: Input: Clobber / Modify)
 		#if defined(__x86_64__)
@@ -171,9 +274,10 @@ __CExternBegin__
 		#elif defined(__arm__)
 			// ARM32 implementation
 			#ifdef __thumb__
+            asm volatile(
 				"mov sp, %0;"
                 "sub sp, sp, #8;"
-                "and sp, sp, #~7;"
+                "bic sp, sp, #7;"
                 "push {r4-r7, lr};"
                 "mov r0, %1;"
                 "blx %2;"
@@ -185,7 +289,7 @@ __CExternBegin__
             asm volatile(
                 "mov sp, %0;"
                 "sub sp, sp, #8;"
-                "and sp, sp, #~7;"
+                "bic sp, sp, #7;"
                 "stmfd sp!, {r4-r7, lr};"
                 "mov r0, %1;"
                 "mov lr, pc;"
@@ -226,11 +330,19 @@ __CExternBegin__
     
     //-----------------------------------------------------------------------//
     void coro_yield(void) {
-        assert(g_cur_co != NULL);
+        if (!g_cur_co) {
+			g_cur_co = &g_main_co;
+			longjmp(g_main_co.ctx, 1);
+			return;
+		}
+		/*
+		* WARNING: setjmp does not save floating-point/vector registers.
+		* If this coroutine uses FPU or SIMD, the state may be lost after yield.
+		*/
         int ret = setjmp(g_cur_co->ctx);
         if (ret == 0) {
-            struct coro* next = coro_select();
-            assert(next != NULL);
+            coro_scheduler_t sched = g_scheduler ? g_scheduler : default_scheduler;
+			struct coro* next = sched();
             if (next == NULL || next == g_cur_co || next->status == co_done) {
                 longjmp(g_cur_co->ctx, 1);
                 return;
@@ -249,7 +361,11 @@ __CExternBegin__
     
     //-----------------------------------------------------------------------//
     void coro_destroy(struct coro* __coro__) {
-        assert(__coro__ != NULL);
+        if (!__coro__) {
+			g_co_errno = CO_ERR_INVAL;
+			g_co_errmsg = "attempt to destroy NULL coroutine";
+			return;
+		}
 		
 		if (__coro__ == &g_main_co)
 			return;
@@ -266,7 +382,10 @@ __CExternBegin__
                 else
                     g_co_list = cur->next;
                 cur->next = NULL;
-                free(cur->stack);
+                if (cur->stack) {
+					size_t total_size = STACK_SIZE + get_page_size();
+					stack_free(cur->stack, total_size);
+				}
                 free(cur);
                 cur = NULL;
 				__coro__ = NULL;
@@ -278,8 +397,10 @@ __CExternBegin__
         }
         
         if (__coro__) {
-            if (__coro__->stack != NULL)
-                free(__coro__->stack);
+            if (__coro__->stack != NULL) {
+				size_t total_size = STACK_SIZE + get_page_size();
+				stack_free(__coro__->stack, total_size);
+			}
             free(__coro__);
         }
     }
