@@ -238,9 +238,9 @@ __CExternBegin__
 			uint8_t* usable_stack = __coro__->stack + page_size;
 			void* stack = (void*)alignstack((uintptr_t)usable_stack + STACK_SIZE, STACK_ALIGNMENT);
 
-    #if defined(__GNUC__) || defined(__clang__)
+		#if defined(__GNUC__) || defined(__clang__)
             // format: asm volatile("InSTructiON List" : Output: Input: Clobber / Modify)
-		#if defined(__x86_64__)
+			#if defined(__x86_64__)
             asm volatile(
                 "movq %0, %%rsp;"
                 "subq $0x20, %%rsp;"
@@ -249,7 +249,7 @@ __CExternBegin__
                 :
 				: "r"(stack), "r"(arg), "r"(func)
                 : "rdi", "rsp", "memory");
-		#elif defined(__i386__)
+			#elif defined(__i386__)
             asm volatile(
 				"movl %0, %%esp;"
 				"subl $8, %%esp;"
@@ -259,7 +259,7 @@ __CExternBegin__
 				:
 				: "r"(stack), "r"(arg), "r"(func)
 				: "eax", "ecx", "edx", "memory");
-		#elif defined(__aarch64__) || defined(__arm64__)
+			#elif defined(__aarch64__) || defined(__arm64__)
             /* AArch64 (ARM64) - GCC/Clang
                Set sp to coroutine stack, prepare x0 (first arg), and branch with link to function pointer.
                We subtract a small frame (16 bytes) to be conservative / keep alignment. */
@@ -271,7 +271,7 @@ __CExternBegin__
                 :
                 : "r"(stack), "r"(arg), "r"(func)
                 : "x0", "sp", "memory");
-		#elif defined(__arm__)
+			#elif defined(__arm__)
 			// ARM32 implementation
 			#ifdef __thumb__
             asm volatile(
@@ -299,32 +299,32 @@ __CExternBegin__
                 : "r"(stack), "r"(arg), "r"(func)
                 : "r0", "r1", "r2", "r3", "lr", "memory");
 			#endif		  
-		#else
-			#error "Unsupported architecture"		
-		#endif		
-    #elif defined(_MSC_VER)
-		#if defined(_WIN64)
+			#else
+				#error "Unsupported architecture"		
+			#endif		
+		#elif defined(_MSC_VER)
+			#if defined(_WIN64)
             __asm {
                 mov rsp, stack
                 sub rsp, 0x20
                 mov rcx, arg
                 call func
             }
-		#elif defined(_M_IX86)
+			#elif defined(_M_IX86)
             __asm {
                 mov esp, stack
                 sub esp, 8
                 push arg
                 call func
             }
-		#elif defined(_M_ARM64) || defined(_M_ARM)
-            #error "MSVC inline assembly on ARM/ARM64 is not supported in this source. Build with clang/gcc or provide an assembly helper."
+			#elif defined(_M_ARM64) || defined(_M_ARM)
+				#error "MSVC inline assembly on ARM/ARM64 is not supported in this source. Build with clang/gcc or provide an assembly helper."
+			#else
+				#error "Unsupported architecture"			
+			#endif
 		#else
-			#error "Unsupported architecture"			
+			#error "Unsupported compiler"
 		#endif
-    #else
-		#error "Unsupported compiler"
-    #endif
         }
     }
     
