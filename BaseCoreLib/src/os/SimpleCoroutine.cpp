@@ -60,7 +60,7 @@ __CExternBegin__
 	 * and place a guard page at the bottom to prevent overflow
 	 */
 	static uint8_t* stack_alloc(size_t total_size) {
-	#if defined(_WIN32)
+	#if (defined(_WIN32) || defined(_WIN64))
 		LPVOID mem = VirtualAlloc(NULL, total_size, MEM_RESERVE | MEM_COMMIT, PAGE_READWRITE);
 		if (!mem) {
 			g_co_errno = CO_ERR_NOMEM;
@@ -82,7 +82,7 @@ __CExternBegin__
 	//-----------------------------------------------------------------------//
 	static void stack_free(uint8_t* stack, size_t total_size) {
 		if (!stack) return;
-	#if defined(_WIN32)
+	#if (defined(_WIN32) || defined(_WIN64))
 		VirtualFree(stack, 0, MEM_RELEASE);
 	#else
 		munmap(stack, total_size);
@@ -92,7 +92,7 @@ __CExternBegin__
 	//-----------------------------------------------------------------------//
 	// set up a protected page, with the first page having no access rights
 	static void stack_protect_first_page(uint8_t* stack, size_t page_size) {
-	#if defined(_WIN32)
+	#if (defined(_WIN32) || defined(_WIN64))
 		DWORD oldprot;
 		VirtualProtect(stack, page_size, PAGE_NOACCESS, &oldprot);
 	#else
@@ -102,7 +102,7 @@ __CExternBegin__
 	
 	//-----------------------------------------------------------------------//
 	static inline size_t get_page_size(void) {
-	#if defined(_WIN32)
+	#if (defined(_WIN32) || defined(_WIN64))
 		SYSTEM_INFO si;
 		GetSystemInfo(&si);
 		return si.dwPageSize;
