@@ -65,12 +65,7 @@ private:
         Node& operator=(const Node&) = delete;
     };
 	
-	static_assert(
-        sizeof(Node) % 64 == 0,
-        "Node size must be multiple of 64 bytes to prevent false sharing. "
-        "If failed: 1) Reduce ElemType size; 2) Add padding field to Node; "
-        "3) Remove this assert if memory pool allocation pattern avoids adjacency."
-    );
+	static_assert(alignof(Node) == 64, "Node must be aligned to 64 bytes to prevent false sharing");
 
     class MemoryPool {
     public:
@@ -78,6 +73,7 @@ private:
         : max_pool_size((init_size > 0 ? init_size : 1024) * 64) {
 			if (!expand(init_size > 0 ? init_size : 1024)) {
 				throw std::bad_alloc();
+            }
 		}
 
         ~MemoryPool(void) {
@@ -141,15 +137,20 @@ private:
                 return true;
             try {
                 size_t old_size = pool.size();
-                pool.resize(new_size);
-                for (size_t i = old_size; i < new_size; ++i) {
-                    pool[i] = std::make_unique<Node>();
-                    push_free(pool[i].get());
+				
+				std::vector<std::unique_ptr<Node>> new_nodes(new_size - old_size);
+                for (auto& node : new_nodes) {
+                    node = std::make_unique<Node>();
                 }
+
+                pool.resize(new_size);
+				for (size_t i = 0; i < new_nodes.size(); ++i) {
+                    push_free(new_nodes[i].get());
+                    pool[old_size + i] = std::move(new_nodes[i]);
+                }
+
                 return true;
             } catch (...) {
-                if (new_size > pool.size())
-                    pool.resize(pool.size());
                 return false;
             }
         }
@@ -214,8 +215,6 @@ bool QueueCAS<ElemType>::enqueue(ElemType elem) noexcept {
 
     while (true) {
         Node* old_tail = tail.load(std::memory_order_acquire);
-        std::atomic_thread_fence(std::memory_order_acquire);
-
         Node* next = old_tail->next.load(std::memory_order_relaxed);
         uint64_t old_version = old_tail->version.load(std::memory_order_relaxed);
 		
@@ -252,8 +251,6 @@ template<typename ElemType>
 bool QueueCAS<ElemType>::try_dequeue(ElemType& result, int max_attempts) noexcept {
     for (int attempt = 0; attempt < max_attempts; ++attempt) {
         Node* old_head = head.load(std::memory_order_acquire);
-		std::atomic_thread_fence(std::memory_order_acquire);
-		
         Node* next = old_head->next.load(std::memory_order_relaxed);
         uint64_t old_version = old_head->version.load(std::memory_order_relaxed);
         Node* old_tail = tail.load(std::memory_order_relaxed);
