@@ -14,8 +14,11 @@
 #include <functional>
 #include <queue>
 #include <thread>
-#include <unordered_map>
+#include <vector>
+#include <memory>
 #include <iostream>
+#include <stdexcept>
+#include <exception>
 
 //---------------------------------------------------------------------------//
 __BEGIN__
@@ -25,62 +28,86 @@ __BEGIN__
 	public:
 		explicit fixed_thread_pool(size_t thread_count)
 			: data_(std::make_shared<data>()) {
+			threads_.reserve(thread_count);		
 			for (size_t i = 0; i < thread_count; ++i) {
-				std::thread([data = data_] {
-					std::unique_lock<std::mutex> lk(data->mtx_);
-					for (;;) {
-						if (!data->tasks_.empty()) {
-							auto func = data->tasks_.front();
-							auto iter = std::find_if(data->funParams.begin(), data->funParams.end(),
-								[func](const auto& item) {
-									void (* const* ptrf)(void*) = func.target<void(*)(void*)>();
-									void (* const* ptrf1)(void*) = item.second.target<void(*)(void*)>();
-									if (ptrf && ptrf1 && *ptrf == *ptrf1)
-										return true;
-									return false;
-								}
-							);
-							if (iter != data->funParams.end()) {
-								auto currentfunc = std::move(func);
-								auto param = iter->first;
-								data->funParams.erase(iter);
-								data->tasks_.pop();
-								lk.unlock();
-								currentfunc(param);
-								lk.lock();
-							}
+				threads_.emplace_back([data = data_] {
+                while (true) {
+                    std::function<void()> task;
+                    {
+                        std::unique_lock<std::mutex> lk(data->mtx_);
+                        data->cond_.wait(lk, [&] { return data->is_shutdown_ || !data->tasks_.empty();});
+                        if (data->is_shutdown_ && data->tasks_.empty())
+                            break;
+                        task = std::move(data->tasks_.front());
+                        data->tasks_.pop();
+                    }
+                    try {
+                        task();
+                    } catch (...) {
+						std::string msg = "Unknown exception";
+                        try {
+                            std::rethrow_exception(std::current_exception());
+                        } catch (const std::exception& e) {
+                            msg = e.what();
+                        } catch (...){ }
+                        
+						std::function<void(const char*)> handler;
+						{
+							std::lock_guard<std::mutex> lk(data_->mtx_);
+							handler = data_->on_exception;
 						}
-						else if (data->is_shutdown_) {
-							std::cout << std::flush << "thread " << std::this_thread::get_id() << " exit" << std::endl;
-							break;
-						}
-						else {
-							data->cond_.wait(lk);
-						}
-					}
-				}).detach();
+
+                        if (handler) {
+                            handler(msg.c_str());
+                        } else {
+                            std::cerr << "Exception in thread pool: " << msg << '\n';
+                        }
+                    }
+                }
+            });
 			}
 		}
 	
-		fixed_thread_pool() = default;
-		fixed_thread_pool(fixed_thread_pool&&) = default;
+		fixed_thread_pool() noexcept = default;
+		fixed_thread_pool(const fixed_thread_pool&) = delete;
+		fixed_thread_pool& operator=(const fixed_thread_pool&) = delete;
+	
+		fixed_thread_pool(fixed_thread_pool&& other) noexcept
+        : data_(std::move(other.data_)),
+          threads_(std::move(other.threads_)) { 
+		}
+		
+		fixed_thread_pool& operator=(fixed_thread_pool&& other) noexcept {
+			if (this != &other) {
+				shutdown_and_join();
+				data_ = std::move(other.data_);
+				threads_ = std::move(other.threads_);
+			}
+			return *this;
+		}
 	
 		~fixed_thread_pool() {
-			if ((bool)data_) {
-				{
-					std::lock_guard<std::mutex> lk(data_->mtx_);
-					data_->is_shutdown_ = true;
-				}
-				data_->cond_.notify_all();
+			shutdown_and_join();
+		}
+		
+		void set_exception_handler(std::function<void(const char*)> handler) {
+			if (data_) {
+				std::lock_guard<std::mutex> lk(data_->mtx_);
+				data_->on_exception = std::move(handler);
 			}
+		}
+		
+		explicit operator bool() const noexcept {
+			return data_ != nullptr && !threads_.empty();
 		}
 	
 		template <class F>
 		void execute(F&& task, void* arg) {
+			if (!data_)
+				throw std::runtime_error("fixed_thread_pool: execute called on moved-from object");
 			{
 				std::lock_guard<std::mutex> lk(data_->mtx_);
-				data_->funParams[arg] = task;
-				data_->tasks_.emplace(std::forward<F>(task));
+				data_->tasks_.emplace([task = std::forward<F>(task), arg] { task(arg); });
 			}
 			data_->cond_.notify_one();
 		}
@@ -90,10 +117,25 @@ __BEGIN__
 			std::mutex mtx_;
 			std::condition_variable cond_;
 			bool is_shutdown_ = false;
-			std::queue<std::function<void(void*)>> tasks_;
-			std::unordered_map<void*, std::function<void(void*)>> funParams;
+			std::queue<std::function<void()>> tasks_;
+			std::function<void(const char*)> on_exception;
 		};
 		std::shared_ptr<data> data_;
+		std::vector<std::thread> threads_;
+		
+		void shutdown_and_join() {
+			if (data_) {
+				{
+					std::lock_guard<std::mutex> lk(data_->mtx_);
+					data_->is_shutdown_ = true;
+				}
+				data_->cond_.notify_all();
+			}
+			
+			for (auto& t : threads_) {
+				if (t.joinable()) t.join();
+			}
+		}
 	};
 	
 	struct param {
@@ -107,19 +149,26 @@ __BEGIN__
 	
 	void threadFunc(void* args) {
 		if (args) {
-			struct param* cl = (struct param*)args;
+			auto* cl = static_cast<param*>(args);
 			
 			// do something
 	
 			cl->callbackFunc();
 			delete cl;
 		}
-	};
+	}
 	
 	//example:
-	//fixed_thread_pool* threadpoolPtr = new fixed_thread_pool(10);
-	//threadpoolPtr->execute(std::function<void(void*)>(threadFunc), new struct param());
-	//delete threadpoolPtr;
+	//fixed_thread_pool pool(10);
+	// pool.set_exception_handler([](const char* msg) {
+	//     std::cerr << "Custom handler: " << msg << '\n';
+	// });
+
+	// pool.execute(std::function<void(void*)>(threadFunc), new param());
+
+	// move
+	// fixed_thread_pool pool2 = std::move(pool);
+	// if (!pool) { /* pool no longer valid */ }
 
 __END__
 
