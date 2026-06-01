@@ -9,14 +9,16 @@
 #ifndef __CircularQueue_h__
 #define __CircularQueue_h__
 #include "../base/Macro.h"
+#include <memory>
 #include <mutex>
 #include <condition_variable>
+#include <optional>
+#include <type_traits>
+#include <stdexcept>
 #include <atomic>
-#include <condition_variable>
-#include <functional>
-#include <iostream>
 #include <thread>
-#include <vector>
+#include <array>
+#include <iostream>
 
 //---------------------------------------------------------------------------//
 __BEGIN__
@@ -25,43 +27,52 @@ __BEGIN__
     template <typename T>
     class CircularQueue {
     public:
-        explicit CircularQueue(size_t capacity) :
-            capacity_(capacity),
-            size_(0),
-            head_(0),
-            tail_(0),
-            buffer_(new T[capacity]) {}
-    
-        ~CircularQueue() 
+        explicit CircularQueue(size_t capacity)
+		: capacity_(capacity),
+          size_(0),
+          head_(0),
+          tail_(0),
+		  buffer_(std::make_unique<T[]>(capacity))
 		{
-            delete[] buffer_;
-        }
-    
-        bool empty() 
+			static_assert(std::is_default_constructible_v<T>,
+				"CircularQueue requires T to be default-constructible");
+			if (capacity == 0) throw std::invalid_argument("capacity must be > 0");
+		}
+		
+		CircularQueue(const CircularQueue&) = delete;
+		CircularQueue& operator=(const CircularQueue&) = delete;
+		CircularQueue(CircularQueue&&) = delete;
+		CircularQueue& operator=(CircularQueue&&) = delete;
+		~CircularQueue() = default;
+		
+        bool empty() const
 		{
             std::unique_lock<std::mutex> lock(mutex_);
             return size_ == 0;
         }
     
-        bool full() 
+        bool full() const
 		{
             std::unique_lock<std::mutex> lock(mutex_);
             return size_ == capacity_;
         }
     
-        size_t size() 
+        size_t size() const
 		{
             std::unique_lock<std::mutex> lock(mutex_);
             return size_;
         }
     
-        size_t capacity() 
+        size_t capacity() const noexcept
 		{
             return capacity_;
         }
     
         bool push(const T& value, bool block = true) 
 		{
+			static_assert(std::is_copy_assignable_v<T> || std::is_move_assignable_v<T>,
+				"CircularQueue::push(const T&) requires T to be copy-assignable or move-assignable");
+					  
             std::unique_lock<std::mutex> lock(mutex_);
     
             if (block) 
@@ -79,7 +90,7 @@ __BEGIN__
                 }
             }
     
-            buffer_[tail_] = value;
+			buffer_[tail_] = value;
             tail_ = (tail_ + 1) % capacity_;
             ++size_;
     
@@ -90,6 +101,9 @@ __BEGIN__
     
         bool push(T&& value, bool block = true) 
 		{
+			static_assert(std::is_move_assignable_v<T>,
+				"CircularQueue::push(T&&) requires T to be move-assignable");
+					  
             std::unique_lock<std::mutex> lock(mutex_);
     
             if (block) 
@@ -107,7 +121,7 @@ __BEGIN__
                 }
             }
     
-            buffer_[tail_] = std::move(value);
+			buffer_[tail_] = std::move(value);
             tail_ = (tail_ + 1) % capacity_;
             ++size_;
     
@@ -118,6 +132,9 @@ __BEGIN__
     
         bool pop(T& value, bool block = true) 
 		{
+			static_assert(std::is_move_assignable_v<T> || std::is_copy_assignable_v<T>,
+				"CircularQueue::pop requires T to be move-assignable or copy-assignable");
+					  
             std::unique_lock<std::mutex> lock(mutex_);
     
             if (block) 
@@ -135,7 +152,7 @@ __BEGIN__
                 }
             }
     
-            value = std::move(buffer_[head_]);
+			value = std::move(buffer_[head_]);
             head_ = (head_ + 1) % capacity_;
             --size_;
     
@@ -145,17 +162,18 @@ __BEGIN__
         }
     
     private:
-        const size_t capacity_; 
+        size_t capacity_;
         size_t size_; 
         size_t head_;
         size_t tail_;
-        T* buffer_;
-        std::mutex mutex_;
+		std::unique_ptr<T[]> buffer_;
+        mutable std::mutex mutex_;
         std::condition_variable not_full_;
         std::condition_variable not_empty_;
     };
     
     //-----------------------------------------------------------------------//
+	// only support SPSC
     template <typename T, size_t N>
     class RingQueue {
     public:
