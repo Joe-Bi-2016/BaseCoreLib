@@ -33,101 +33,84 @@ __BEGIN__
         : data_(std::make_shared<data>(max_queue_size)),
           thread_count_(thread_count)
 		{
-			if (thread_count == 0)
-				throw std::invalid_argument("thread_count must be > 0");
-  
-			threads_.reserve(thread_count);	
-
 			try 
 			{
+				if (thread_count == 0)
+					throw std::invalid_argument("thread_count must be > 0");
+  
+				threads_.reserve(thread_count);
+			
 				for (size_t i = 0; i < thread_count; ++i)
 				{
 					threads_.emplace_back([data = data_] {
-					while (true) 
-					{
-						std::function<void()> task;
+						data->active_count.fetch_add(1, std::memory_order_relaxed);
+						
+						while (true) 
 						{
-							std::unique_lock<std::mutex> lk(data->mtx_);
-							data->cond_.wait(lk, [&] { return data->is_shutdown_ || !data->tasks_.empty();});
-							if (data->is_shutdown_ && data->tasks_.empty())
-								break;
-							task = std::move(data->tasks_.front());
-							data->tasks_.pop();
-							
-							if (data->max_queue_size_ > 0)
-                                data->full_cond_.notify_one();
-						}
-						try 
-						{
-							task();
-						} 
-						catch (...) 
-						{
-							std::string msg = "Unknown exception";
+							std::function<void()> task;
+							{
+								std::unique_lock<std::mutex> lk(data->mtx_);
+								data->cond_.wait(lk, [&] { return data->is_shutdown_ || !data->tasks_.empty();});
+								if (data->is_shutdown_ && data->tasks_.empty())
+									break;
+								task = std::move(data->tasks_.front());
+								data->tasks_.pop();
+								
+								if (data->max_queue_size_ > 0)
+									data->full_cond_.notify_one();
+							}
 							try 
 							{
-								std::rethrow_exception(std::current_exception());
+								task();
 							} 
-							catch (const std::exception& e) 
+							catch (...) 
 							{
-								msg = e.what();
-							} 
-							catch (...)
-							{ }
-							
-							std::function<void(const char*)> handler;
-							{
-								std::lock_guard<std::mutex> lk(data_->mtx_);
-								handler = data_->on_exception;
-							}
-	
-							if (handler)
-							{
-                                try 
+								std::string msg = "Unknown exception";
+								try 
 								{
-                                    handler(msg.c_str());
-                                } 
+									std::rethrow_exception(std::current_exception());
+								} 
+								catch (const std::exception& e) 
+								{
+									msg = e.what();
+								} 
+								catch (...)
+								{ }
+								
+	
+								std::function<void(const std::string&)> handler;
+								try 
+								{
+									std::lock_guard<std::mutex> lk(data->mtx_);
+									handler = data->on_exception;
+								} 
 								catch (...) 
-								{}
-							} 
-							else 
-								std::cerr << "Exception in thread pool: " << msg << '\n';
+								{
+									std::cerr << "Exception error in thread pool: get user exception function" << '\n';
+								}
+							
+								if (handler)
+								{
+									try 
+									{
+										handler(msg);
+									} 
+									catch (...) 
+									{ }
+								} 
+								else
+									std::cerr << "Exception in thread pool: " << msg << '\n';
+							}
 						}
-					}
+						
+						data->active_count.fetch_sub(1, std::memory_order_release);
+						data->exit_cond_.notify_all();
 					});
 				}
 			} 
 			catch(...) 
 			{
-				{
-					std::lock_guard<std::mutex> lk(data_->mtx_);
-					data_->is_shutdown_ = true;
-				}
-				data_->cond_.notify_all();
-				
-				if (data_->max_queue_size_ > 0)
-					data_->full_cond_.notify_all();
-					
-				for (auto& t : threads_) 
-				{
-					if (t.joinable()) 
-					{
-						try 
-						{
-							t.join();
-						} 
-						catch (...) 
-						{
-							try 
-							{
-								t.detach();
-							} 
-							catch (...) 
-							{}
-						}
-					}
-				}
-				
+				shutdown_and_join();
 				throw;
 			}
 		}
@@ -141,7 +124,9 @@ __BEGIN__
           threads_(std::move(other.threads_)),
           thread_count_(other.thread_count_)
 		{
-			  other.thread_count_ = 0;
+			other.data_.reset();
+			other.threads_.clear();
+			other.thread_count_ = 0;
 		}
 
 		fixed_thread_pool& operator=(fixed_thread_pool&& other) noexcept 
@@ -152,6 +137,8 @@ __BEGIN__
 				data_ = std::move(other.data_);
 				threads_ = std::move(other.threads_);
 				thread_count_ = other.thread_count_;
+				other.data_.reset();
+				other.threads_.clear();
 				other.thread_count_ = 0;
 			}
 			return *this;
@@ -162,18 +149,13 @@ __BEGIN__
 			shutdown_and_join();
 		}
 		
-		void set_exception_handler(std::function<void(const char*)> handler)
+		void set_exception_handler(std::function<void(const std::string&)> handler)
 		{
 			if (data_) 
 			{
 				std::lock_guard<std::mutex> lk(data_->mtx_);
 				data_->on_exception = std::move(handler);
 			}
-		}
-		
-		explicit operator bool() const noexcept
-		{
-			return data_ != nullptr && !threads_.empty();
 		}
 		
 		size_t thread_count() const noexcept 
@@ -183,14 +165,18 @@ __BEGIN__
 
 		size_t queue_size() const 
 		{
-			if (!data_) return 0;
+			if (!data_) 
+				return 0;
+
 			std::lock_guard<std::mutex> lk(data_->mtx_);
 			return data_->tasks_.size();
 		}
 	
 		bool is_shutdown() const
 		{
-			if (!data_) return true;
+			if (!data_) 
+				return true;
+
 			std::lock_guard<std::mutex> lk(data_->mtx_);
 			return data_->is_shutdown_;
 		}
@@ -271,7 +257,7 @@ __BEGIN__
 				data_->cond_.notify_all();
 				if (data_->max_queue_size_ > 0)
 					data_->full_cond_.notify_all();
-			}
+			}			
 		}
 	
 	private:
@@ -284,7 +270,9 @@ __BEGIN__
 			bool is_shutdown_ = false;
 			std::queue<std::function<void()>> tasks_;
 			size_t max_queue_size_;
-			std::function<void(const char*)> on_exception;
+			std::function<void(const std::string&)> on_exception;
+			std::atomic<int> active_count{0};
+			std::condition_variable exit_cond_;
 		};
 		
 		std::shared_ptr<data> data_;
@@ -312,6 +300,12 @@ __BEGIN__
 						{ }
 					}
 				}
+			}
+			
+			if (data_) 
+			{
+				std::unique_lock<std::mutex> lk(data_->mtx_);
+				data_->exit_cond_.wait(lk, [this] { return data_->active_count.load(std::memory_order_acquire) == 0; });
 			}
 		}
 	};
