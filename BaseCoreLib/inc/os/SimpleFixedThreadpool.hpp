@@ -43,68 +43,93 @@ __BEGIN__
 				for (size_t i = 0; i < thread_count; ++i)
 				{
 					threads_.emplace_back([data = data_] {
-						data->active_count.fetch_add(1, std::memory_order_relaxed);
-						
-						while (true) 
 						{
-							std::function<void()> task;
+							std::lock_guard<std::mutex> lk(data->mtx_);
+							++data->active_count;
+						}
+						
+						// RAII guard: ensures it will definitely decrement when leaving the scope,
+						// whether or not it's abnormal
+						struct thread_exit_guard 
+						{
+							std::shared_ptr<data> data_;
+							~thread_exit_guard() 
 							{
-								std::unique_lock<std::mutex> lk(data->mtx_);
-								data->cond_.wait(lk, [&] { return data->is_shutdown_ || !data->tasks_.empty();});
-								if (data->is_shutdown_ && data->tasks_.empty())
-									break;
-								task = std::move(data->tasks_.front());
-								data->tasks_.pop();
-								
-								if (data->max_queue_size_ > 0)
-									data->full_cond_.notify_one();
+								std::lock_guard<std::mutex> lk(data_->mtx_);
+								--data_->active_count;
+								data_->exit_cond_.notify_all();
 							}
-							try 
+						} guard{data};
+						
+						try
+						{
+							while (true) 
 							{
-								task();
-							} 
-							catch (...) 
-							{
-								std::string msg = "Unknown exception";
-								try 
+								std::function<void()> task;
 								{
-									std::rethrow_exception(std::current_exception());
-								} 
-								catch (const std::exception& e) 
-								{
-									msg = e.what();
-								} 
-								catch (...)
-								{ }
-								
+									std::unique_lock<std::mutex> lk(data->mtx_);
+									data->cond_.wait(lk, [&] { return data->is_shutdown_ || !data->tasks_.empty();});
+									if (data->is_shutdown_ && data->tasks_.empty())
+										break;
+									task = std::move(data->tasks_.front());
+									data->tasks_.pop();
+									
+									if (data->max_queue_size_ > 0)
+										data->full_cond_.notify_one();
 	
-								std::function<void(const std::string&)> handler;
+									if (!data->tasks_.empty())
+										data->cond_.notify_one();
+								}
 								try 
 								{
-									std::lock_guard<std::mutex> lk(data->mtx_);
-									handler = data->on_exception;
+									task();
 								} 
 								catch (...) 
 								{
-									std::cerr << "Exception error in thread pool: get user exception function" << '\n';
-								}
-							
-								if (handler)
-								{
+									std::string msg = "Unknown exception";
 									try 
 									{
-										handler(msg);
+										std::rethrow_exception(std::current_exception());
+									} 
+									catch (const std::exception& e) 
+									{
+										msg = e.what();
+									} 
+									catch (...)
+									{ }
+									
+		
+									std::function<void(const std::string&)> handler;
+									try 
+									{
+										std::lock_guard<std::mutex> lk(data->mtx_);
+										handler = data->on_exception;
 									} 
 									catch (...) 
-									{ }
-								} 
-								else
-									std::cerr << "Exception in thread pool: " << msg << '\n';
+									{
+										std::cerr << "Exception error in thread pool: get user exception function, original exception: " << msg << '\n';
+									}
+								
+									if (handler)
+									{
+										try 
+										{
+											handler(msg);
+										} 
+										catch (...) 
+										{
+											std::cerr << "User exception handler threw an unknown exception, original exception: " << msg << '\n';
+										}
+									} 
+									else
+										std::cerr << "Exception in thread pool: " << msg << '\n';
+								}
 							}
 						}
-						
-						data->active_count.fetch_sub(1, std::memory_order_release);
-						data->exit_cond_.notify_all();
+						catch(...)
+						{
+							std::cerr << "Fatal error in thread pool worker, thread exiting." << std::endl;
+						}
 					});
 				}
 			} 
@@ -133,7 +158,7 @@ __BEGIN__
 		{
 			if (this != &other) 
 			{
-				shutdown_and_join();
+				shutdown_and_join(); 
 				data_ = std::move(other.data_);
 				threads_ = std::move(other.threads_);
 				thread_count_ = other.thread_count_;
@@ -162,6 +187,15 @@ __BEGIN__
 		{
 			return thread_count_;
 		}
+		
+		size_t active_count() const 
+		{
+			if (!data_) 
+				return 0;
+
+			std::lock_guard<std::mutex> lk(data_->mtx_);
+			return data_->active_count;
+		}
 
 		size_t queue_size() const 
 		{
@@ -181,14 +215,38 @@ __BEGIN__
 			return data_->is_shutdown_;
 		}
 	
+		// cleanup function should be noexcept
 		template <class F>
-		void execute(F&& task, void* arg) 
+		void execute(F&& task, void* arg, std::function<void(void*)> cleanup = nullptr) 
 		{
 			if (!data_)
 				throw std::runtime_error("fixed_thread_pool: execute called on moved-from object");
 			
-			std::function<void()> wrapped = [task = std::forward<F>(task), arg] { task(arg); };
-			
+			auto taskPtr = std::make_shared<typename std::decay<F>::type>(std::forward<F>(task));
+			std::function<void()> wrapped = [taskPtr, arg, cleanup = std::move(cleanup)] {
+				try 
+				{
+					(*taskPtr)(arg);
+				} 
+				catch (...)
+				{
+                // Capture original exception, then run cleanup (if any)
+                std::exception_ptr original = std::current_exception();
+                if (cleanup)
+                {
+                    try 
+                    {
+                        cleanup(arg);
+                    }
+                    catch (...)
+                    {
+                        // Suppress cleanup exceptions original exception must be preserved
+                    }
+                }
+                std::rethrow_exception(original);
+            }
+			};
+	
 			{
 				std::unique_lock<std::mutex> lk(data_->mtx_);
 
@@ -213,13 +271,33 @@ __BEGIN__
 			}
 		}
 		
+		// cleanup function should be noexcept
 		template<class F>
-		bool execute_for(F&& task, void* arg, std::chrono::milliseconds timeout)
+		bool execute_for(F&& task, void* arg, std::chrono::milliseconds timeout, std::function<void(void*)> cleanup = nullptr)
 		{
 			if (!data_)
 				return false;
-	
-			std::function<void()> wrapped = [task = std::forward<F>(task), arg] { task(arg); };
+			
+			auto taskPtr = std::make_shared<typename std::decay<F>::type>(std::forward<F>(task));
+			std::function<void()> wrapped = [taskPtr, arg, cleanup = std::move(cleanup)] {
+				try 
+				{
+					(*taskPtr)(arg);
+				} 
+				catch (...)
+				{
+                std::exception_ptr original = std::current_exception();
+                if (cleanup)
+                {
+                    try 
+                    {
+                        cleanup(arg);
+                    }
+                    catch (...) {}
+                }
+                std::rethrow_exception(original);
+            }
+			};
 	
 			{
 				std::unique_lock<std::mutex> lk(data_->mtx_);
@@ -271,7 +349,7 @@ __BEGIN__
 			std::queue<std::function<void()>> tasks_;
 			size_t max_queue_size_;
 			std::function<void(const std::string&)> on_exception;
-			std::atomic<int> active_count{0};
+			int active_count = 0;
 			std::condition_variable exit_cond_;
 		};
 		
@@ -305,7 +383,7 @@ __BEGIN__
 			if (data_) 
 			{
 				std::unique_lock<std::mutex> lk(data_->mtx_);
-				data_->exit_cond_.wait(lk, [this] { return data_->active_count.load(std::memory_order_acquire) == 0; });
+				data_->exit_cond_.wait(lk, [this] { return data_->active_count == 0; });
 			}
 		}
 	};
