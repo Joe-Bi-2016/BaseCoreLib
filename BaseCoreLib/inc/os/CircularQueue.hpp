@@ -49,8 +49,6 @@ __BEGIN__
 		{
 			static_assert(std::is_default_constructible<T>::value,
 							"CircularQueue requires T to be default-constructible");
-            static_assert(std::is_nothrow_copy_assignable<T>::value,
-							"CircularQueue requires T to have noexcept copy assignment");
             static_assert(std::is_nothrow_move_assignable<T>::value,
 							"CircularQueue requires T to have noexcept move assignment");
             
@@ -89,23 +87,10 @@ __BEGIN__
     
         bool push(const T& value, bool block = true) 
 		{
-            std::unique_lock<std::mutex> lock(mutex_);
-    
-            if (block) 
-                not_full_.wait(lock, [this]{ return size_ < capacity_; });
-            else 
-			{
-                if (size_ == capacity_) 
-                    return false;
-            }
-    
-			buffer_[tail_] = value;
-            tail_ = (tail_ + 1) % capacity_;
-            ++size_;
-    
-            not_empty_.notify_one();
-    
-            return true;
+            // copy to temporary to allow exception-safe copy even without
+            // nothrow copy assignment; then move assign
+            T tmp(value);
+            return push(std::move(tmp), block);
         }
     
         bool push(T&& value, bool block = true) 
@@ -116,7 +101,7 @@ __BEGIN__
                 not_full_.wait(lock, [this]{ return size_ < capacity_; });
             else 
 			{
-                if (size_ == capacity_)
+                if (size_ == capacity_) 
                     return false;
             }
     
@@ -132,18 +117,8 @@ __BEGIN__
 		template <class Rep, class Period>
 		bool push(const T& value, const std::chrono::duration<Rep, Period>& timeout)
 		{
-			std::unique_lock<std::mutex> lock(mutex_);
-			
-			if (!not_full_.wait_for(lock, timeout, [this]{ return size_ < capacity_; }))
-				return false;
-				
-			buffer_[tail_] = value;
-			tail_ = (tail_ + 1) % capacity_;
-			++size_;
-			
-			not_empty_.notify_one();
-			
-			return true;
+			T tmp(value);
+			return push(std::move(tmp), timeout);
 		}
 	
 		template <class Rep, class Period>
@@ -223,12 +198,8 @@ __BEGIN__
 			static_assert((N & (N - 1)) == 0, "RingQueue N must be a power of 2");
 			static_assert(std::is_default_constructible<T>::value,
 							"RingQueue requires T to be default-constructible");
-			static_assert(std::is_nothrow_move_constructible<T>::value,
-							"RingQueue requires T to be nothrow move-constructible");
 			static_assert(std::is_nothrow_move_assignable<T>::value,
 							"RingQueue requires T to be nothrow move-assignable");
-			static_assert(std::is_nothrow_copy_assignable<T>::value,
-							"RingQueue requires T to be nothrow copy-assignable");  
 							
 			for (size_t i = 0; i < N; ++i) 
 				states_[i].value.store(i, std::memory_order_relaxed);
@@ -241,7 +212,8 @@ __BEGIN__
     
         bool push(const T& item, bool block = false) 
 		{ 
-			return pushImpl(item, block); 
+			T tmp(item);
+			return push(std::move(tmp), block);
 		}
 		
         bool push(T&& item, bool block = false) 
@@ -252,7 +224,8 @@ __BEGIN__
 		template <class Rep, class Period>
 		bool push(const T& item, const std::chrono::duration<Rep, Period>& timeout) 
 		{
-			return pushImpl(item, timeout);
+			T tmp(item);
+			return push(std::move(tmp), timeout);
 		}
 
 		template <class Rep, class Period>
@@ -271,6 +244,8 @@ __BEGIN__
 		{
 			static_assert(noexcept(func(std::declval<T>())), 
 			"The callback must be noexcept to avoid data loss");
+			static_assert(std::is_nothrow_move_constructible<T>::value,
+				"RingQueue callback pop requires T to be nothrow move-constructible");
 			
             T item;
 			if (!popImpl(item, block)) 
@@ -292,6 +267,8 @@ __BEGIN__
 		{
 			static_assert(noexcept(func(std::declval<T>())), 
 			"The callback must be noexcept to avoid data loss");
+			static_assert(std::is_nothrow_move_constructible<T>::value,
+				"RingQueue callback pop requires T to be nothrow move-constructible");
 			
 			T item;
 			if (!popImpl(item, timeout)) 
@@ -324,7 +301,7 @@ __BEGIN__
 				
 				if (state == idx) // slot free for write
 				{
-					if (write_idx_.compare_exchange_weak(idx, idx + 1, std::memory_order_acquire, std::memory_order_relaxed))
+					if (write_idx_.compare_exchange_weak(idx, idx + 1, std::memory_order_relaxed, std::memory_order_relaxed))
 					{
 						// got slot, write data
 						data_[slot] = std::forward<Item>(item);
@@ -355,7 +332,7 @@ __BEGIN__
 				
 				if (state == idx)
 				{
-					if (write_idx_.compare_exchange_weak(idx, idx + 1, std::memory_order_acquire, std::memory_order_relaxed))
+					if (write_idx_.compare_exchange_weak(idx, idx + 1, std::memory_order_relaxed, std::memory_order_relaxed))
 					{
 						data_[slot] = std::forward<Item>(item);
 						states_[slot].value.store(idx + 1, std::memory_order_release);
@@ -382,7 +359,7 @@ __BEGIN__
 				
 				if (state == idx + 1) // data ready
 				{
-					if (read_idx_.compare_exchange_weak(idx, idx + 1, std::memory_order_acquire, std::memory_order_relaxed))
+					if (read_idx_.compare_exchange_weak(idx, idx + 1, std::memory_order_relaxed, std::memory_order_relaxed))
 					{
 						item = std::move(data_[slot]);
 						states_[slot].value.store(idx + N, std::memory_order_release);
@@ -411,7 +388,7 @@ __BEGIN__
 				
 				if (state == idx + 1)
 				{
-					if (read_idx_.compare_exchange_weak(idx, idx + 1, std::memory_order_acquire, std::memory_order_relaxed))
+					if (read_idx_.compare_exchange_weak(idx, idx + 1, std::memory_order_relaxed, std::memory_order_relaxed))
 					{
 						item = std::move(data_[slot]);
 						states_[slot].value.store(idx + N, std::memory_order_release);
