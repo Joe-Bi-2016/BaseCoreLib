@@ -13,15 +13,14 @@
 #include <vector>
 #include <mutex>
 #include <memory>
+#include <algorithm>
 #include <thread>
 #include <cstdint>
-#include <algorithm>
 #include <new>
 #include <type_traits>
 #include <utility>
 #include <cstddef>
-#include <stdexcept>
-#include <cassert>
+
 //---------------------------------------------------------------------------//
 __BEGIN__
 
@@ -31,7 +30,7 @@ __BEGIN__
 		#if defined(__i386__) || defined(_M_IX86) || defined(__x86_64__) || defined(_M_X64)
 			#define CACHE_LINE_SIZE 64
 		// ARM 32/64: overwhelmingly 64 bytes, some old 32-bit are 32.
-		// We default to 64 to be safe; if targeting a known 32?byte platform,
+		// We default to 64 to be safe; if targeting a known 32 byte platform,
 		// the user can override via -DCACHE_LINE_SIZE=32.
 		#elif defined(__arm__) || defined(__aarch64__) || defined(_M_ARM) || defined(_M_ARM64)
 			#define CACHE_LINE_SIZE 64
@@ -63,13 +62,13 @@ __BEGIN__
 	// Tagged pointer: 16-byte aligned, contains pointer + 64-bit version.
 	// Used to eliminate ABA by making CAS compare both pointer and version atomically.
 	template<typename NodeType>
-	struct alignas(16) TaggedPtr 
+	struct alignas(sizeof(void*) >= 8 ? 16 : 8) TaggedPtr
 	{
 		NodeType* ptr;
-		uint64_t version;
+		typename std::conditional<(sizeof(void*) >= 8), uint64_t, uint32_t>::type version;
 		
 		TaggedPtr() noexcept : ptr(nullptr), version(0) {}
-		TaggedPtr(NodeType* p, uint64_t v) noexcept : ptr(p), version(v) {}
+		TaggedPtr(NodeType* p, decltype(version) v) noexcept : ptr(p), version(v) {}
 		
 		bool operator==(const TaggedPtr& rhs) const noexcept
 		{
@@ -93,13 +92,10 @@ __BEGIN__
 					"ElemType must be nothrow move constructible");
     static_assert(noexcept(std::declval<ElemType&>().~ElemType()),
 					"ElemType must be nothrow destructible");
-    static_assert(std::is_move_assignable<ElemType>::value || 
-                  std::is_copy_assignable<ElemType>::value, 
-                  "ElemType must be movable assignable (or copy assignable)");
 	public:
 		explicit QueueCAS(size_t poolSize = 1024);
-		// the caller must ensure there is no concurrency!
-		// clean up leftover elements, only safe when it is certain there is no concurrency
+		// Destructor waits for all active operations to finish and for all registered threads
+		// to exit. To avoid deadlock, join all threads before destruction.
 		~QueueCAS(void);
 	
 		bool enqueue(ElemType elem) noexcept;
@@ -110,8 +106,7 @@ __BEGIN__
 		
 		size_t size_approx() const noexcept 
 		{
-			auto val = approx_size.load(std::memory_order_relaxed);
-			return static_cast<size_t>(val < 0 ? 0 : val);
+			return approx_size.load(std::memory_order_relaxed);
 		}
 	
 	private:
@@ -119,13 +114,13 @@ __BEGIN__
 		// Node: holds element and next pointer (with version)
 		struct alignas(CACHE_LINE_SIZE) Node 
 		{
-			union 
-			{
-				ElemType elem;
-			};
+			typename std::aligned_storage<sizeof(ElemType), alignof(ElemType)>::type storage;
 			std::atomic<bool> elem_initialized;
 			std::atomic<TaggedPtr<Node>> next;
 	
+			ElemType& elem() { return *static_cast<ElemType*>(static_cast<void*>(&storage)); }
+			const ElemType& elem() const { return *static_cast<const ElemType*>(static_cast<const void*>(&storage)); }
+
 			Node(void) noexcept : elem_initialized(false), next(TaggedPtr<Node>(nullptr, 0)) {}
 			
 			template<typename... Args>
@@ -133,20 +128,20 @@ __BEGIN__
 			: elem_initialized(true), 
 			next(TaggedPtr<Node>(nullptr, 0))
 			{
-				new (&elem) ElemType(std::forward<Args>(args)...);
+				new (&storage) ElemType(std::forward<Args>(args)...);
 			}
 			
 			template<typename... Args>
-			void initElem(Args&&... args) noexcept(noexcept(::new (&elem) ElemType(std::forward<Args>(args)...))) 
+			void initElem(Args&&... args) noexcept(noexcept(::new (&storage) ElemType(std::forward<Args>(args)...))) 
 			{
-				new (&elem) ElemType(std::forward<Args>(args)...);
+				new (&storage) ElemType(std::forward<Args>(args)...);
 				elem_initialized.store(true, std::memory_order_release);
 			}
 			
 			~Node()
 			{
 				if (elem_initialized.load(std::memory_order_relaxed))
-					elem.~ElemType();
+					elem().~ElemType();
 			}
 			
 			Node(const Node&) = delete;
@@ -191,7 +186,7 @@ __BEGIN__
 					
 				Node* node = tp.ptr;
 				if (node->elem_initialized.load(std::memory_order_acquire))
-					node->elem.~ElemType();
+					node->elem().~ElemType();
         
 				node->initElem(std::forward<Args>(args)...);
 				node->next.store(TaggedPtr<Node>(nullptr, tp.version), std::memory_order_relaxed);
@@ -208,7 +203,7 @@ __BEGIN__
 				Node* node = tp.ptr;
 				if (node->elem_initialized.load(std::memory_order_acquire)) 
 				{
-					node->elem.~ElemType();
+					node->elem().~ElemType();
 					node->elem_initialized.store(false, std::memory_order_relaxed);
 				}
 				
@@ -223,7 +218,7 @@ __BEGIN__
 					return;
 				
 				if (node.ptr->elem_initialized.exchange(false, std::memory_order_relaxed))
-					node.ptr->elem.~ElemType();
+					node.ptr->elem().~ElemType();
 				
 				push_free(node);
 			}
@@ -311,6 +306,11 @@ __BEGIN__
 			std::atomic<Node*> ptr;
 			std::atomic<HpNode*> next;
 			HpNode() noexcept : ptr(nullptr), next(nullptr) {}
+			~HpNode()
+			{
+				ptr.store(nullptr, std::memory_order_relaxed);
+				next.store(nullptr, std::memory_order_relaxed);
+			}
 		};
 	
 		static HpNode*& thread_hp_node() 
@@ -334,21 +334,21 @@ __BEGIN__
 				
 				register_count.fetch_add(1, std::memory_order_release);
 		
-				struct Guard 
+				struct hp_list_guard 
 				{
 					HpNode* n;
 					QueueCAS* q;
-					explicit Guard(HpNode* node, QueueCAS* queue) : n(node), q(queue) {}
-					~Guard()
+					hp_list_guard(HpNode* node, QueueCAS* queue) : n(node), q(queue) {}
+					~hp_list_guard()
 					{ 
-						q->flush_local_retire();
+						q->flush_local_retire(); // thread exit, flush it's local retire list to global
 						q->unregister_thread(n);
 						delete n;
 						thread_hp_node() = nullptr;
 					}
 				};
 				
-				static thread_local Guard guard(my, this);
+				static thread_local hp_list_guard guard(my, this);
 			}
 		}
 		
@@ -414,7 +414,8 @@ __BEGIN__
 		void flush_local_retire()
 		{
 			auto& local = get_local_retire_list();
-			if (local.empty()) return;
+			if (local.empty()) 
+				return;
 			{
 				std::lock_guard<std::mutex> lock(retire_mtx);
 				retire_list.insert(retire_list.end(), local.begin(), local.end());
@@ -426,7 +427,8 @@ __BEGIN__
 		
 		void retire(TaggedPtr<Node> node) noexcept
 		{
-			if (!node.ptr) return;
+			if (!node.ptr) 
+				return;
 			
 			auto& local = get_local_retire_list();
 			local.push_back(node);
@@ -453,10 +455,11 @@ __BEGIN__
 			retire_list.swap(remaining);
 		}
 		
-		void force_reclaim_all() 
+		void force_reclaim_all()
 		{
 			for (auto& tp : retire_list)
 				pool.deallocate(tp);
+				
 			retire_list.clear();
 		}
 		
@@ -487,7 +490,7 @@ __BEGIN__
 		alignas(CACHE_LINE_SIZE) std::atomic<size_t> approx_size;
 		// global hazard pointer list
 		alignas(CACHE_LINE_SIZE) std::atomic<HpNode*> hp_list_head{nullptr}; 
-		alignas(CACHE_LINE_SIZE) std::atomic<int> register_count;
+		alignas(CACHE_LINE_SIZE) std::atomic<unsigned> register_count;
 		alignas(CACHE_LINE_SIZE) std::mutex hp_mutex;
 		// safe retire list
 		std::mutex retire_mtx;
@@ -495,7 +498,6 @@ __BEGIN__
 		// all thread shutdown flags and active user count
 		alignas(CACHE_LINE_SIZE) std::atomic<bool> shutdown_flag;
 		alignas(CACHE_LINE_SIZE) std::atomic<int> active_users;
-		std::mutex dump_mtx;
 	public:
 		QueueCAS(const QueueCAS&) = delete;
 		QueueCAS& operator=(const QueueCAS&) = delete;
@@ -512,10 +514,7 @@ __BEGIN__
 	  register_count(0),
       shutdown_flag(false),
       active_users(0)
-	{
-		if (!std::atomic<TaggedPtr<Node>>().is_lock_free())
-			throw std::runtime_error("TaggedPtr<Node> must be lock-free (128-bit CAS required)");
-		   
+	{  
 		TaggedPtr<Node> dummy = pool.allocate(); 
 		if (!dummy.ptr)
 			throw std::bad_alloc();
@@ -658,16 +657,22 @@ __BEGIN__
 		{
 			TaggedPtr<Node> old_head = head.load(std::memory_order_acquire);
 			protect(old_head.ptr);
-			if (old_head != head.load(std::memory_order_relaxed)) 
+			if (old_head != head.load(std::memory_order_acquire)) 
 			{
 				clear_protect();
 				continue;
 			}
 	
 			TaggedPtr<Node> next = old_head.ptr->next.load(std::memory_order_acquire);
-	
+			if (!next.ptr) 
+			{
+				clear_protect();
+				return false;
+			}
+			
 			protect(next.ptr);
-			if (old_head != head.load(std::memory_order_relaxed)) 
+			
+			if (old_head != head.load(std::memory_order_acquire)) 
 			{
 				clear_protect();
 				continue;
@@ -676,11 +681,6 @@ __BEGIN__
 			TaggedPtr<Node> old_tail = tail.load(std::memory_order_acquire);
 			if (old_head.ptr == old_tail.ptr)
 			{
-				if (!next.ptr) 
-				{
-					clear_protect();
-					return false;
-				}
 				tail.compare_exchange_weak(old_tail, next, std::memory_order_release, std::memory_order_relaxed);
 				clear_protect();
 				continue;
@@ -694,8 +694,9 @@ __BEGIN__
 	
 			if (head.compare_exchange_weak(old_head, next, std::memory_order_release, std::memory_order_relaxed)) 
 			{
-				result = std::move(next.ptr->elem);
+				ElemType tmp(std::move(next.ptr->elem()));
 				next.ptr->elem_initialized.store(false, std::memory_order_release);
+				std::swap(result, tmp);
 				approx_size.fetch_sub(1, std::memory_order_relaxed);
 				clear_protect();
 				retire(old_head);
@@ -710,7 +711,6 @@ __BEGIN__
 	template<typename ElemType>
 	void QueueCAS<ElemType>::dump(size_t max_elements/* = 1000000*/)
 	{
-		std::lock_guard<std::mutex> lock(dump_mtx);
 		TaggedPtr<Node> curr = head.load(std::memory_order_relaxed);
 		Node* node = curr.ptr ? curr.ptr->next.load(std::memory_order_relaxed).ptr : nullptr;
 
@@ -728,7 +728,7 @@ __BEGIN__
 			if (node->elem_initialized.load(std::memory_order_relaxed))
 			{
 				if (!first) std::cout << " ";
-				std::cout << node->elem;
+				std::cout << node->elem();
 				first = false;
 				++displayed;
 			}
