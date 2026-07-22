@@ -9,19 +9,20 @@
 #ifndef __LockFreeQueue_h__
 #define __LockFreeQueue_h__
 #include <atomic>
-#include <iostream>
 #include <vector>
 #include <mutex>
 #include <memory>
 #include <algorithm>
 #include <thread>
-#include <cstdint>
+#include <climits>
 #include <new>
 #include <type_traits>
 #include <utility>
 #include <cstddef>
+#include <cassert>
+#include <stdexcept>
+#include <ostream>
 
-//---------------------------------------------------------------------------//
 __BEGIN__
 
 	//-----------------------------------------------------------------------//
@@ -59,13 +60,129 @@ __BEGIN__
 	#endif
 	
 	//-----------------------------------------------------------------------//
+	// Global singleton hazard pointer manager
+	// Thread safe registration / unregistration of HP slots.
+	// Each thread obtains exactly one slot per unique MaxSlots value.
+	// Slot is automatically released when the thread exits (RAII guard).
+	//-----------------------------------------------------------------------//
+	template<size_t MaxSlots = 1024>
+	class HpManager 
+	{
+	public:
+		static HpManager& instance() 
+		{
+			static HpManager mgr;
+			return mgr;
+		}
+	
+		// Returns false if all slots are exhausted.
+		bool try_register_thread() noexcept 
+		{
+			uint32_t& slot = get_thread_slot();
+			if (slot != INT_MAX) return true;
+	
+			// Pop an index from the free stack (lock-free)
+			uint32_t old_top = hp_free_top.load(std::memory_order_acquire);
+			while (old_top > 0) 
+			{
+				if (hp_free_top.compare_exchange_weak(old_top, old_top - 1, std::memory_order_acquire, std::memory_order_relaxed))
+				{
+					slot = hp_free_stack[old_top - 1].load(std::memory_order_acquire);
+					// Ensure that the slot guard will call unregister_thread() at thread exit
+					struct ThreadGuard 
+					{
+						~ThreadGuard() 
+						{
+							HpManager<MaxSlots>::instance().unregister_thread();
+						}
+					};
+					static thread_local ThreadGuard guard; // destructor calls unregister
+					return true;
+				}
+			}
+			return false;
+		}
+	
+		void unregister_thread() noexcept 
+		{
+			uint32_t& slot = get_thread_slot();
+			if (slot == INT_MAX) 
+				return;
+	
+			hp_array[slot].store(nullptr, std::memory_order_release);
+	
+			uint32_t old_top = hp_free_top.load(std::memory_order_acquire);
+			hp_free_stack[old_top].store(slot, std::memory_order_release);
+			do{
+				
+			} while (!hp_free_top.compare_exchange_weak(old_top, old_top + 1, std::memory_order_release, std::memory_order_relaxed));
+	
+			slot = INT_MAX; // mark as unregistered
+		}
+	
+		void protect(void* p) noexcept
+		{
+			const uint32_t slot = get_thread_slot();
+			if (slot != INT_MAX)
+				hp_array[slot].store(p, std::memory_order_release);
+		}
+	
+		void clear_protect() noexcept 
+		{
+			const uint32_t slot = get_thread_slot();
+			if (slot != INT_MAX)
+				hp_array[slot].store(nullptr, std::memory_order_release);
+		}
+	
+		// scans all slots, returns true if 'p' is still protected by any thread.
+		bool is_protected(void* p) const noexcept 
+		{
+			for (size_t i = 0; i < MaxSlots; ++i)
+			{
+				if (hp_array[i].load(std::memory_order_acquire) == p)
+					return true;
+			}
+			return false;
+		}
+	
+	private:
+		HpManager()
+		: hp_array(new std::atomic<void*>[MaxSlots]),
+		  hp_free_stack(new std::atomic<uint32_t>[MaxSlots]),
+		  hp_free_top(0)
+		{
+			for (size_t i = 0; i < MaxSlots; ++i)
+			{
+				hp_array[i].store(nullptr, std::memory_order_relaxed);
+				hp_free_stack[i].store(static_cast<uint32_t>(i), std::memory_order_relaxed);
+			}
+			hp_free_top.store(static_cast<uint32_t>(MaxSlots), std::memory_order_relaxed);
+		}
+	
+		~HpManager() = default;
+		HpManager(const HpManager&) = delete;
+		HpManager& operator=(const HpManager&) = delete;
+	
+		static uint32_t& get_thread_slot() 
+		{
+			static thread_local uint32_t slot = INT_MAX;
+			return slot;
+		}
+	
+		const std::unique_ptr<std::atomic<void*>[]>      hp_array;
+		const std::unique_ptr<std::atomic<uint32_t>[]>   hp_free_stack;
+		alignas(CACHE_LINE_SIZE) std::atomic<uint32_t>   hp_free_top;
+	};
+	
+	//-----------------------------------------------------------------------//
 	// Tagged pointer: 16-byte aligned, contains pointer + 64-bit version.
 	// Used to eliminate ABA by making CAS compare both pointer and version atomically.
+	//-----------------------------------------------------------------------//
 	template<typename NodeType>
 	struct alignas(sizeof(void*) >= 8 ? 16 : 8) TaggedPtr
 	{
 		NodeType* ptr;
-		typename std::conditional<(sizeof(void*) >= 8), uint64_t, uint32_t>::type version;
+		typename std::conditional<(sizeof(void*) >= 8), std::uint64_t, std::uint32_t>::type version;
 		
 		TaggedPtr() noexcept : ptr(nullptr), version(0) {}
 		TaggedPtr(NodeType* p, decltype(version) v) noexcept : ptr(p), version(v) {}
@@ -85,13 +202,16 @@ __BEGIN__
 	
 	//-----------------------------------------------------------------------//
 	// Lock-free queue (multi-producer, multi-consumer)
-	template<typename ElemType>
+	//-----------------------------------------------------------------------//
+	template<typename ElemType, size_t MaxHp = 1024>
 	class QueueCAS 
 	{
     static_assert(std::is_nothrow_move_constructible<ElemType>::value,
 					"ElemType must be nothrow move constructible");
-    static_assert(noexcept(std::declval<ElemType&>().~ElemType()),
+    static_assert(std::is_nothrow_destructible<ElemType>::value,
 					"ElemType must be nothrow destructible");
+    static_assert(std::is_nothrow_move_assignable<ElemType>::value,
+                  "ElemType must be nothrow move assignable");
 	public:
 		explicit QueueCAS(size_t poolSize = 1024);
 		// Destructor waits for all active operations to finish and for all registered threads
@@ -102,7 +222,7 @@ __BEGIN__
 		bool dequeue(ElemType& result) noexcept; 
 		bool dequeue_once(ElemType& result) noexcept;
 		bool try_dequeue(ElemType& result, int max_attempts = 16) noexcept;
-		void dump(size_t max_elements = 1000000); // For single-threaded or stationary debugging only
+		void dump(std::ostream& os, size_t max_elements = 1000000); // For single-threaded or stationary debugging only
 		
 		size_t size_approx() const noexcept 
 		{
@@ -112,6 +232,7 @@ __BEGIN__
 	private:
 		//-------------------------------------------------------------------//
 		// Node: holds element and next pointer (with version)
+		//-------------------------------------------------------------------//
 		struct alignas(CACHE_LINE_SIZE) Node 
 		{
 			typename std::aligned_storage<sizeof(ElemType), alignof(ElemType)>::type storage;
@@ -154,6 +275,7 @@ __BEGIN__
 		//-------------------------------------------------------------------//
 		// Memory pool: reuses nodes to avoid frequent allocation.
 		// free_list uses tagged pointer for ABA safety.
+		//-------------------------------------------------------------------//
 		class MemoryPool 
 		{
 		public:
@@ -301,170 +423,71 @@ __BEGIN__
 		};
 		
 		//-------------------------------------------------------------------//
-		struct alignas(CACHE_LINE_SIZE) HpNode
+		// Hazard pointer helpers functions - forward to the manager with our MaxHp.
+		void protect(Node* p) noexcept 
 		{
-			std::atomic<Node*> ptr;
-			std::atomic<HpNode*> next;
-			HpNode() noexcept : ptr(nullptr), next(nullptr) {}
-			~HpNode()
-			{
-				ptr.store(nullptr, std::memory_order_relaxed);
-				next.store(nullptr, std::memory_order_relaxed);
-			}
-		};
-	
-		static HpNode*& thread_hp_node() 
-		{
-			static thread_local HpNode* node = nullptr;
-			return node;
-		}
-	
-		void ensure_thread_registered() 
-		{
-			HpNode*& my = thread_hp_node();
-			if (!my)
-			{
-				my = new HpNode();
-				{
-					std::lock_guard<std::mutex> lock(hp_mutex);
-					HpNode* old = hp_list_head.load(std::memory_order_relaxed);
-					my->next.store(old, std::memory_order_relaxed);
-					hp_list_head.store(my, std::memory_order_relaxed);
-				}
-				
-				register_count.fetch_add(1, std::memory_order_release);
-		
-				struct hp_list_guard 
-				{
-					HpNode* n;
-					QueueCAS* q;
-					hp_list_guard(HpNode* node, QueueCAS* queue) : n(node), q(queue) {}
-					~hp_list_guard()
-					{ 
-						q->flush_local_retire(); // thread exit, flush it's local retire list to global
-						q->unregister_thread(n);
-						delete n;
-						thread_hp_node() = nullptr;
-					}
-				};
-				
-				static thread_local hp_list_guard guard(my, this);
-			}
+			HpManager<MaxHp>::instance().protect(static_cast<void*>(p));
 		}
 		
-		void unregister_thread(HpNode* node) 
+		void clear_protect() noexcept
 		{
-			{
-				std::lock_guard<std::mutex> lock(hp_mutex);
-				HpNode* prev = nullptr;
-				HpNode* curr = hp_list_head.load(std::memory_order_relaxed);
-				while (curr) 
-				{
-					if (curr == node) 
-					{
-						if (prev)
-							prev->next.store(curr->next.load(std::memory_order_relaxed), std::memory_order_relaxed);
-						else
-							hp_list_head.store(curr->next.load(std::memory_order_relaxed), std::memory_order_relaxed);
-						break;
-					}
-					prev = curr;
-					curr = curr->next.load(std::memory_order_relaxed);
-				}
-			}
-			
-			register_count.fetch_sub(1, std::memory_order_release);
+			HpManager<MaxHp>::instance().clear_protect();
 		}
-
-	
-		void protect(Node* p)
+		
+		bool is_protected(Node* p) noexcept 
 		{
-			HpNode* my = thread_hp_node();
-			if (my) 
-				my->ptr.store(p, std::memory_order_release);
+			return HpManager<MaxHp>::instance().is_protected(static_cast<void*>(p));
 		}
-	
-		void clear_protect() 
-		{
-			HpNode* my = thread_hp_node();
-			if (my) 
-				my->ptr.store(nullptr, std::memory_order_release);
-		}
-	
-		bool is_protected(Node* p) 
-		{
-			std::lock_guard<std::mutex> lock(hp_mutex);
-			HpNode* n = hp_list_head.load(std::memory_order_acquire);
-			while (n)
-			{
-				if (n->ptr.load(std::memory_order_acquire) == p)
-					return true;
-				n = n->next.load(std::memory_order_acquire);
-			}
-			return false;
-		}
-	
+		
 		//-------------------------------------------------------------------//
-		static std::vector<TaggedPtr<Node>>& get_local_retire_list()
-		{
-			static thread_local std::vector<TaggedPtr<Node>> list;
-			return list;
-		}
-
-		void flush_local_retire()
-		{
-			auto& local = get_local_retire_list();
-			if (local.empty()) 
-				return;
-			{
-				std::lock_guard<std::mutex> lock(retire_mtx);
-				retire_list.insert(retire_list.end(), local.begin(), local.end());
-				local.clear();
-			}
-
-			try_reclaim();
-		}
-		
+		// Retire / reclaim list (lock-free stack)
 		void retire(TaggedPtr<Node> node) noexcept
 		{
 			if (!node.ptr) 
 				return;
-			
-			auto& local = get_local_retire_list();
-			local.push_back(node);
-			
-			if (local.size() >= 128)
-				flush_local_retire();
+			TaggedPtr<Node> old_head = retire_head.load(std::memory_order_relaxed);
+			TaggedPtr<Node> new_head;
+			do 
+			{
+				new_head.ptr = node.ptr;
+				new_head.version = node.version + 1;
+				node.ptr->next.store(old_head, std::memory_order_relaxed);
+			} while (!retire_head.compare_exchange_weak(old_head, new_head, std::memory_order_release, std::memory_order_relaxed));
 		}
 	
-		void try_reclaim()
+		void reclaim_batch(size_t batch_size = 16) noexcept
 		{
-			std::lock_guard<std::mutex> lock(retire_mtx);
-			if (retire_list.empty()) 
-				return;
-				
-			std::vector<TaggedPtr<Node>> remaining;
-			for (auto& tp : retire_list) 
+			for (size_t i = 0; i < batch_size; ++i) 
 			{
-				if (!is_protected(tp.ptr))
-					pool.deallocate(tp);
+				TaggedPtr<Node> old_head = retire_head.load(std::memory_order_acquire);
+				if (!old_head.ptr) 
+					break;
+				TaggedPtr<Node> next = old_head.ptr->next.load(std::memory_order_relaxed);
+				if (!retire_head.compare_exchange_weak(old_head, next, std::memory_order_release, std::memory_order_relaxed))
+					continue;
+				if (!is_protected(old_head.ptr))
+					pool.deallocate(old_head);
 				else
-					remaining.push_back(tp);
+					retire(old_head);
+			}
+		}
+	
+		void force_reclaim_all() noexcept 
+		{
+			TaggedPtr<Node> cur = retire_head.load(std::memory_order_relaxed);
+			while (cur.ptr) 
+			{
+				TaggedPtr<Node> next = cur.ptr->next.load(std::memory_order_relaxed);
+				pool.deallocate(cur);
+				cur = next;
 			}
 			
-			retire_list.swap(remaining);
+			retire_head.store(TaggedPtr<Node>(nullptr, 0), std::memory_order_relaxed);
 		}
-		
-		void force_reclaim_all()
-		{
-			for (auto& tp : retire_list)
-				pool.deallocate(tp);
-				
-			retire_list.clear();
-		}
-		
+	
 		//-------------------------------------------------------------------//
-		bool enter()
+		// Enter / leave critical section
+		bool enter() noexcept
 		{
 			active_users.fetch_add(1, std::memory_order_release);
 			if (shutdown_flag.load(std::memory_order_acquire)) 
@@ -473,12 +496,16 @@ __BEGIN__
 				return false;
 			}
 			
-			ensure_thread_registered();
+			if (!HpManager<MaxHp>::instance().try_register_thread()) 
+			{
+				active_users.fetch_sub(1, std::memory_order_release);
+				return false;
+			}
 			
 			return true;
 		}
 	
-		void leave()
+		void leave() noexcept
 		{
 			active_users.fetch_sub(1, std::memory_order_release);
 		}
@@ -488,13 +515,8 @@ __BEGIN__
 		alignas(CACHE_LINE_SIZE) std::atomic<TaggedPtr<Node>> tail;
 		MemoryPool pool;
 		alignas(CACHE_LINE_SIZE) std::atomic<size_t> approx_size;
-		// global hazard pointer list
-		alignas(CACHE_LINE_SIZE) std::atomic<HpNode*> hp_list_head{nullptr}; 
-		alignas(CACHE_LINE_SIZE) std::atomic<unsigned> register_count;
-		alignas(CACHE_LINE_SIZE) std::mutex hp_mutex;
-		// safe retire list
-		std::mutex retire_mtx;
-		std::vector<TaggedPtr<Node>> retire_list;
+		// retire list
+		alignas(CACHE_LINE_SIZE) std::atomic<TaggedPtr<Node>> retire_head;
 		// all thread shutdown flags and active user count
 		alignas(CACHE_LINE_SIZE) std::atomic<bool> shutdown_flag;
 		alignas(CACHE_LINE_SIZE) std::atomic<int> active_users;
@@ -504,17 +526,19 @@ __BEGIN__
 	};
 	
 	//-----------------------------------------------------------------------//
-	template<typename ElemType>
-	QueueCAS<ElemType>::QueueCAS(size_t poolSize/* = 1024*/)
+template<typename ElemType, size_t MaxHp>
+	QueueCAS<ElemType, MaxHp>::QueueCAS(size_t poolSize/* = 1024*/)
     : head(TaggedPtr<Node>(nullptr, 0)),
       tail(TaggedPtr<Node>(nullptr, 0)),
       pool(poolSize),
       approx_size(0),
-	  hp_list_head(nullptr),
-	  register_count(0),
+	  retire_head(TaggedPtr<Node>(nullptr, 0)),
       shutdown_flag(false),
       active_users(0)
 	{  
+		if (!head.is_lock_free())
+			throw std::runtime_error("atomic<TaggedPtr<Node>> is not lock?free on this platform");
+
 		TaggedPtr<Node> dummy = pool.allocate(); 
 		if (!dummy.ptr)
 			throw std::bad_alloc();
@@ -523,24 +547,15 @@ __BEGIN__
 		tail.store(dummy, std::memory_order_relaxed);
 	}
 	
-	template<typename ElemType>
-	QueueCAS<ElemType>::~QueueCAS(void) 
+	template<typename ElemType, size_t MaxHp>
+	QueueCAS<ElemType, MaxHp>::~QueueCAS(void) 
 	{
 		shutdown_flag.store(true, std::memory_order_release);
 		while (active_users.load(std::memory_order_acquire) > 0)
 			std::this_thread::yield();
-	
-		while (register_count.load(std::memory_order_acquire) > 0)
-			std::this_thread::yield();
 		
-		HpNode* hp = hp_list_head.load(std::memory_order_relaxed);
-		while (hp) 
-		{
-			HpNode* next = hp->next.load(std::memory_order_relaxed);
-			delete hp;
-			hp = next;
-		}
-		
+		assert(active_users.load() == 0);
+
 		TaggedPtr<Node> cur = head.load(std::memory_order_relaxed);
 		while (cur.ptr) 
 		{
@@ -552,8 +567,8 @@ __BEGIN__
 		force_reclaim_all();
 	}
 	
-	template<typename ElemType>
-	bool QueueCAS<ElemType>::enqueue(ElemType elem) noexcept 
+	template<typename ElemType, size_t MaxHp>
+	bool QueueCAS<ElemType, MaxHp>::enqueue(ElemType elem) noexcept 
 	{
 		if (!enter()) 
 			return false;
@@ -593,8 +608,8 @@ __BEGIN__
         clear_protect();
 	}
 	
-	template<typename ElemType>
-	bool QueueCAS<ElemType>::dequeue(ElemType& result) noexcept 
+	template<typename ElemType, size_t MaxHp>
+	bool QueueCAS<ElemType, MaxHp>::dequeue(ElemType& result) noexcept 
     {
 		if (!enter())
 			return false;
@@ -607,7 +622,7 @@ __BEGIN__
 			if (try_dequeue(result, 16))
 			{
 				leave();
-				try_reclaim();
+				reclaim_batch(16);
 				return true;
 			}
 	
@@ -623,35 +638,38 @@ __BEGIN__
 			{
 				clear_protect();
 				leave();
-				try_reclaim();
+				reclaim_batch(16);
 				return false;
 			}
 			clear_protect();
 	
-			for (int i = 0; i < backoff; ++i)
-				cpu_relax();
-				
-			if (backoff < max_backoff)
+			if (backoff < max_backoff) 
+			{
+				for (int i = 0; i < backoff; ++i)
+					cpu_relax();
+				if (backoff > 16)
+					std::this_thread::yield();
 				backoff *= 2;
+			} 
 			else
 				std::this_thread::yield();
 		}
 	}
 	
-	template<typename ElemType>
-	bool QueueCAS<ElemType>::dequeue_once(ElemType& result) noexcept 
+	template<typename ElemType, size_t MaxHp>
+	bool QueueCAS<ElemType, MaxHp>::dequeue_once(ElemType& result) noexcept 
     {
 		if (!enter()) 
 			return false;
 		bool ok = try_dequeue(result, 1);
 		leave();
 		if (ok) 
-			try_reclaim();
+			reclaim_batch(16);
 		return ok;
 	}
 	
-	template<typename ElemType>
-	bool QueueCAS<ElemType>::try_dequeue(ElemType& result, int max_attempts) noexcept 
+	template<typename ElemType, size_t MaxHp>
+	bool QueueCAS<ElemType, MaxHp>::try_dequeue(ElemType& result, int max_attempts) noexcept 
 	{
 		for (int attempt = 0; attempt < max_attempts; ++attempt) 
 		{
@@ -708,16 +726,16 @@ __BEGIN__
 		return false;
 	}
 	
-	template<typename ElemType>
-	void QueueCAS<ElemType>::dump(size_t max_elements/* = 1000000*/)
+	template<typename ElemType, size_t MaxHp>
+	void QueueCAS<ElemType, MaxHp>::dump(std::ostream& os, size_t max_elements/* = 1000000*/)
 	{
 		TaggedPtr<Node> curr = head.load(std::memory_order_relaxed);
 		Node* node = curr.ptr ? curr.ptr->next.load(std::memory_order_relaxed).ptr : nullptr;
 
-		std::cout << "Queue elements (approx size: " << size_approx() << "): ";
+		os << "Queue elements (approx size: " << size_approx() << "): ";
 		if (!node) 
 		{
-			std::cout << "Empty" << std::endl;
+			os << "Empty" << std::endl;
 			return;
 		}
 
@@ -727,8 +745,8 @@ __BEGIN__
 		{
 			if (node->elem_initialized.load(std::memory_order_relaxed))
 			{
-				if (!first) std::cout << " ";
-				std::cout << node->elem();
+				if (!first) os << " ";
+				os << node->elem();
 				first = false;
 				++displayed;
 			}
@@ -738,13 +756,13 @@ __BEGIN__
 		
 		if (node)
 		{
-			std::cout << " ...";
-			std::cout << " (showing " << displayed << " of " << size_approx() << " elements)";
+			os << " ...";
+			os << " (showing " << displayed << " of " << size_approx() << " elements)";
 		} 
 		else 
-			std::cout << " (total " << displayed << " elements)";
+			os << " (total " << displayed << " elements)";
 		
-		std::cout << std::endl;
+		os << std::endl;
 	}
 
 __END__	
