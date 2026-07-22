@@ -114,7 +114,7 @@ __BEGIN__
 					};
 					
 					// RAII, destructor calls unregister, make sure each thread only corresponds to the current QueueCAS
-					static thread_local std::unordered_map<const HpManager*, ThreadGuard> guards;
+					static threadlocal std::unordered_map<const HpManager*, ThreadGuard> guards;
 					if (guards.find(this) == guards.end())
 						guards.emplace(this, ThreadGuard{this, slot});
 
@@ -165,7 +165,7 @@ __BEGIN__
 		static uint32_t& get_thread_slot_for(const HpManager* mgr) 
 		{
 			// Make sure each thread only corresponds to the current QueueCAS
-			static thread_local std::unordered_map<const HpManager*, uint32_t> slots;
+			static threadlocal std::unordered_map<const HpManager*, uint32_t> slots;
 			auto it = slots.find(mgr);
 			if (it == slots.end())
 			{
