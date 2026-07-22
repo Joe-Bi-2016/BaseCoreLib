@@ -87,6 +87,22 @@ __BEGIN__
 		~HpManager() = default;
 		HpManager(const HpManager&) = delete;
 		HpManager& operator=(const HpManager&) = delete;
+
+		// Must be called from the thread that owns the QueueCAS before it is destroyed.
+		// Releases the current thread's HP slot and removes its automatic cleanup guard.
+		void cleanup_current_thread() noexcept 
+		{
+			uint32_t& slot_ref = get_thread_slot();
+			if (slot_ref == UINT32_MAX) 
+				return;
+		
+			auto& guards = get_guards();
+			auto it = guards.find(this);
+			if (it != guards.end())
+				guards.erase(it);
+
+			slot_ref = UINT32_MAX;
+		}
 	
 		// Returns false if all slots are exhausted.
 		bool try_register_thread() noexcept 
@@ -101,20 +117,9 @@ __BEGIN__
 				if (hp_free_top.compare_exchange_weak(old_top, old_top - 1, std::memory_order_acquire, std::memory_order_relaxed))
 				{
 					slot = hp_free_stack[old_top - 1].load(std::memory_order_acquire);
-					// Ensure that the slot guard will call unregister_thread() at thread exit
-					struct ThreadGuard 
-					{
-						HpManager* owner;
-						uint32_t   slot;
-						ThreadGuard(HpManager* hp, uint32_t s) : owner(hp), slot(s) { }
-						~ThreadGuard() 
-						{
-							owner->unregister_thread(slot);
-						}
-					};
 					
-					// RAII, destructor calls unregister, make sure each thread only corresponds to the current QueueCAS
-					static threadlocal std::unordered_map<const HpManager*, ThreadGuard> guards;
+					// RAII guard for automatic cleanup at thread exit
+					auto& guards = get_guards();
 					if (guards.find(this) == guards.end())
 						guards.emplace(this, ThreadGuard{this, slot});
 
@@ -162,6 +167,24 @@ __BEGIN__
 		}
 	
 	private:
+		// Nested type for automatic cleanup at thread exit
+		struct ThreadGuard 
+		{
+			HpManager* owner;
+			uint32_t   slot;
+			ThreadGuard(HpManager* hp, uint32_t s) : owner(hp), slot(s) { }
+			~ThreadGuard() 
+			{
+				owner->unregister_thread(slot);
+			}
+		};
+
+		static std::unordered_map<const HpManager*, ThreadGuard>& get_guards() 
+		{
+			static threadlocal std::unordered_map<const HpManager*, ThreadGuard> guards;
+			return guards;
+		}
+
 		static uint32_t& get_thread_slot_for(const HpManager* mgr) 
 		{
 			// Make sure each thread only corresponds to the current QueueCAS
@@ -569,6 +592,8 @@ template<typename ElemType>
 			std::this_thread::yield();
 		
 		assert(active_users.load() == 0);
+
+		hp_manager.cleanup_current_thread();
 
 		TaggedPtr<Node> cur = head.load(std::memory_order_relaxed);
 		while (cur.ptr) 
