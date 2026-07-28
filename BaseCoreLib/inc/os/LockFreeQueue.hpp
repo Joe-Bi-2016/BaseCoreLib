@@ -574,7 +574,7 @@ template<typename ElemType>
       active_users(0)
 	{  
 		if (!head.is_lock_free())
-			throw std::runtime_error("atomic<TaggedPtr<Node>> is not lock?free on this platform");
+			throw std::runtime_error("atomic<TaggedPtr<Node>> is not lock-free on this platform");
 
 		TaggedPtr<Node> dummy = pool.allocate(); 
 		if (!dummy.ptr)

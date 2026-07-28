@@ -245,7 +245,7 @@ __BEGIN__
 			static_assert(noexcept(func(std::declval<T>())), 
 			"The callback must be noexcept to avoid data loss");
 			static_assert(std::is_nothrow_move_constructible<T>::value,
-				"RingQueue callback pop requires T to be nothrow move-constructible");
+			"RingQueue callback pop requires T to be nothrow move-constructible");
 			
             T item;
 			if (!popImpl(item, block)) 
@@ -268,7 +268,7 @@ __BEGIN__
 			static_assert(noexcept(func(std::declval<T>())), 
 			"The callback must be noexcept to avoid data loss");
 			static_assert(std::is_nothrow_move_constructible<T>::value,
-				"RingQueue callback pop requires T to be nothrow move-constructible");
+			"RingQueue callback pop requires T to be nothrow move-constructible");
 			
 			T item;
 			if (!popImpl(item, timeout)) 
